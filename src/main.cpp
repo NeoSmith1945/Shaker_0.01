@@ -1,102 +1,43 @@
 #include <Arduino.h>
-
 #include <WiFi.h>
-#include <driver/adc.h>
 #include <Wire.h>
-
-#define I2C_SDA 21
-#define I2C_SCL 22
-
-#define PIN_RED    27 // GIOP25
-#define PIN_GREEN  25 // GIOP27
-#define PIN_BLUE   32 // GIOP32
- 
-// Include Adafruit PCA9685 Servo Library
-#include "Adafruit_PWMServoDriver.h"
-
-#include <analogWrite.h>
-
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
 #include "SPIFFS.h"
+#include "tools.h"
+#include "Servo_PCA9685.h"
+
+
+#define I2C_SDA 21
+#define I2C_SCL 22
  
-// Creat object to represent PCA9685 at default I2C address
-
-
-Adafruit_PWMServoDriver pca9685 = Adafruit_PWMServoDriver(0x40, Wire);
-
- 
-// Define maximum and minimum number of "ticks" for the servo motors
-// Range from 0 to 4095
-// This determines the pulse width
-
-#define FREQUENCY 250
-#define SERVOMIN  500  // Minimum value
-#define SERVOMAX  2500  // Maximum value
- 
-// Define servo motor connections (expand as required)
-#define SER0  0   //Servo Motor 0 on connector 0
-#define SER1  1  //Servo Motor 1 on connector 12
- 
-// Variables for Servo Motor positions (expand as required)
-int pwm0;
-int pwm1;
-
-
-int initMajorMin = 130;
-int initMajorMax = 180;
-
-int initSupportMin = 130;
-int initSupportMax = 163;
-
-// 16 servo objects can be created on the ESP32
- 
-int pos = 0;    // variable to store the servo position
-
-int CurPos0 = 130 ;
-int CurPos1 = 120 ;
-
-
 bool bLowVoltage = false;
 
-
-const float r1 = 30000.0f; // R1 in ohm, 50K
-const float r2 =  7500.0f; // R2 in ohm, 10k potentiometer
-
-float fReadBatteryChannel_3( )
-{
-  float adcValue = 0.0f;
-  float Vbatt = 0.0f;
-  float vRefScale = (3.3f / 4096.0f) * ((r1 + r2) / r2);
-    
-  adc1_get_raw(ADC1_CHANNEL_0); //read and discard
-  adcValue = float( adc1_get_raw(ADC1_CHANNEL_0) ); //take a raw ADC reading
-  Vbatt = (adcValue * vRefScale * 1.12f) - 0.25f;
-  return  Vbatt;
-}
-
-float fReadBatteryChannel_0( )
-{
-  float adcValue = 0.0f;
-  float Vbatt = 0.0f;
-
-  float vRefScale = (3.3f / 4096.0f) * ((r1 + r2) / r2);
-    
-  adc1_get_raw(ADC1_CHANNEL_3); //read and discard
-  adcValue = float( adc1_get_raw(ADC1_CHANNEL_3) ); //take a raw ADC reading
-  Vbatt = (adcValue * vRefScale * 1.12f) - 0.50f ;
-  return  Vbatt; 
-}
-
-
+// Set web server port number to 80
+WiFiServer server(80);
 
 const char* ssid     = "myNetworkNL";
 const char* password = "31075979163814654332";
 
-// Set web server port number to 80
-WiFiServer server(80);
+int MajorServMin, MajorServMax, SupportServMin, SupportServMax, count, waiting;
+
+cServo_PCA9685 pca9685 = cServo_PCA9685(0x40, Wire);
+  
+// Variables for Servo Motor positions (expand as required)
+
+
+int initMajorMin = 100;
+int initMajorMax = 180;
+int initSupportMin = 110;
+int initSupportMax = 163;
+
+// 16 servo objects can be created on the ESP32
+ 
+
+int CurPos0 = 120 ;
+int CurPos1 = 120 ;
 
 // Variable to store the HTTP request
 String header;
@@ -145,10 +86,8 @@ char cell_volt_string[10];
 char cur_1_string[14];
 char cur_2_string[14];
 
-
 bool canBeStarted = false;
 bool canBeStopped = false;
-
 
 TaskHandle_t      Task_HW = NULL;
 TaskHandle_t      Task_CurrentMon = NULL;
@@ -158,341 +97,17 @@ SemaphoreHandle_t let_me_process;
 
 String StateMsg;
 
-
-int MajorServMin, MajorServMax, SupportServMin, SupportServMax, count, waiting;
-
 float Voltage1, Voltage2  ; // Gets you mV
 float Amps1 , Amps2  ;
 float Amps1_Max = 0 , Amps2_Max=0  ;
 
 
 const int led = 2; // ESP32 Pin to which onboard LED is connected
-unsigned long previousMillis = 0;  // will store last time LED was updated
-const long interval = 1000;  // interval at which to blink (milliseconds)
-int ledState = LOW;  // ledState used to set the LED
 
 
 uint8_t i;
+
 bool ConnectionEstablished; // Flag for successfully handled connection
-
-void blinkLED() {
-  unsigned long currentMillis = millis();
-
-  // if enough millis have elapsed
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
-    // toggle the LED
-    ledState = !ledState;
-    digitalWrite(BUILTIN_LED, ledState);
-
-  }
-}
-
-int angleToPulse(int ang){
-   int pulse = map(ang, 0, 180, SERVOMIN,SERVOMAX);// map angle of 0 to 180 to Servo min and Servo max 
-   Serial.print("Angle: ");Serial.print(ang);
-   Serial.print(" pulse: ");Serial.println(pulse);
-   return pulse;
-}
-
-void current_monitor_task(void *param)
-{
-  float ACSValue1 = 0.0, Samples1 = 0.0, AvgACS1 = 0.0,  BaseVol = 2.08f ;
-  float ACSValue2 = 0.0, Samples2 = 0.0, AvgACS2 = 0.0 ;
-
-  //Change BaseVol as per your reading in the first step.                            
-
-  float vRefScale = (3.3f / 4096.0f) ;      
-  Voltage1 = 0; 
-  Voltage2 = 0 ; // Gets you mV
-  Amps1 = 0; 
-  Amps2 = 0 ;
-  
-  while (true)  {
-    ACSValue1 = 0.0;
-    Samples1 = 0.0; 
-    AvgACS1 = 0.0;
-    ACSValue2 = 0.0;
-    Samples2 = 0.0; 
-    AvgACS2 = 0.0;
-  
-    for (int x = 0; x < 5; x++) { //This would take 500 Samples
-      adc1_get_raw(ADC1_CHANNEL_6); //read and discard using GPIO - IO34
-      ACSValue1 = float( adc1_get_raw(ADC1_CHANNEL_6) ); //take a raw ADC reading
-      Samples1 = Samples1 + ACSValue1;
-
-      adc1_get_raw(ADC1_CHANNEL_5); //read and discard using GPIO - IO33
-      ACSValue2 = float( adc1_get_raw(ADC1_CHANNEL_5) ); //take a raw ADC reading
-      Samples2 = Samples2 + ACSValue2;
-      vTaskDelay ( 300 / portTICK_PERIOD_MS);
-    }  
-    
-    AvgACS1 = Samples1/5;
-    Voltage1 = AvgACS1 * vRefScale - BaseVol ; // Gets you mV
-    
-    Amps1 = ( Voltage1 / 1.32 );
-
-    if (Amps1 >= Amps1_Max) Amps1_Max = Amps1;
-     
-    AvgACS2 = Samples2/5;
-    Voltage2 = AvgACS2 * vRefScale - BaseVol ; // Gets you mV
-    Amps2 = ( Voltage2 / 1.32 );
-
-    if (Amps2 >= Amps2_Max) Amps2_Max = Amps2;
-
-    if ( Amps2_Max > 2.5 ) {
-      StateMsg = "current_monitor_task: Max current(3) more than 2.5 A, servo will be off";
-      canBeStopped = false;
-      xSemaphoreGive(  let_me_process ); 
-      if ( Task_HW != NULL ) vTaskDelete(Task_HW);
-      vTaskDelete(NULL);
-    }
-
-    if ( Amps1_Max > 2.5 ) {
-      StateMsg = "current_monitor: Max current(1) more than 2.5 A, servo will be off";
-      canBeStopped = false;
-      xSemaphoreGive(  let_me_process ); 
-      if ( Task_HW != NULL ) vTaskDelete(Task_HW);
-      vTaskDelete(NULL);      
-    }
-    snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,CurPos0);
-    snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,CurPos1);
-    valueCur_1 = String( cur_1_string ) ;
-    valueCur_2 = String( cur_2_string ) ;
-    vTaskDelay ( 50 / portTICK_PERIOD_MS);
-  } 
-}
-
-
-void goAhead(int MinV, int MaxV, int waiting){
-  for (pos = MinV; pos <= MaxV; pos++ ) { // goes from 0 degrees to 180 degrees
-      // in steps of 1 degree
-      pwm1 = angleToPulse(pos);
-      if ((pos >= MajorServMin) && (pos <= MajorServMax)) {         
-           pca9685.setPWM(SER0, 0, pwm1);
-           CurPos0 = pos;
-       }
-      // in steps of 1 degree
-      if ((pos >= SupportServMin) && (pos <= SupportServMax)) {
-          pca9685.setPWM(SER1, 0, pwm1);
-          CurPos1 = pos;
-      }
-      vTaskDelay ( waiting / portTICK_PERIOD_MS);
-   }
-}
-
-void goBack(int MinV, int MaxV, int waiting){
-  for (pos = MaxV; pos >= MinV; pos-- ) { // goes from 180 degrees to 0 degrees
-      pwm1 = angleToPulse(pos);
-      if ((pos >= MajorServMin) && (pos <= MajorServMax)) {                  
-          pca9685.setPWM(SER0, 0, pwm1);
-          CurPos0 = pos;
-      }
-      if ((pos >= SupportServMin) && (pos <= SupportServMax )) { 
-          pca9685.setPWM(SER1, 0, pwm1);
-          CurPos1 = pos;
-      }
-      vTaskDelay ( waiting / portTICK_PERIOD_MS);  
-  }
-}
-
-void BlinkRGB_LED (int PIN_LED,int times, int duration){
-    for (int ii=1; ii<times; ii++ ) {
-      analogWrite(PIN_LED,   247); delay(duration);
-      analogWrite(PIN_LED,   0); delay(duration);
-    }
-}
-
-void VoltageMonTask( void *param ) {
-
-  for(;;) {
-     if ( fReadBatteryChannel_3() < 6.5f) break; 
-     vTaskDelay ( 7000 / portTICK_PERIOD_MS);
-  }
-          
-  for(;;) {
-    bLowVoltage = true;
-    if ( Task_CurrentMon != NULL) vTaskDelete(Task_CurrentMon);
-    if ( Task_HW !=  NULL) vTaskDelete(Task_HW);
-    BlinkRGB_LED(PIN_RED, 5, 1000);
-  }
-}
-
-void MoveMajorServoToNewPos(int newPos){
-  int step = 1;
-  int startPos = CurPos0;
-  if (CurPos0 == newPos) return;
-  if (CurPos0 > newPos) {
-    for (int pos = startPos; pos >= newPos; pos -= step) { // goes from 180 degrees to 0 degrees
-      pwm1 = angleToPulse(pos);
-      pca9685.setPWM(SER0, 0, pwm1);
-      CurPos0 = pos;
-      vTaskDelay ( waiting / portTICK_PERIOD_MS);
-   };
-  } else {
-      for (int pos = startPos; pos <= newPos; pos += step) { // goes from 180 degrees to 0 degrees
-        pwm1 = angleToPulse(pos);
-        pca9685.setPWM(SER0, 0, pwm1);
-        CurPos0 = pos;
-        vTaskDelay ( waiting / portTICK_PERIOD_MS);
-      };
-  };
-}
-
-void MoveMajorServoToStart(){
-   MoveMajorServoToNewPos(MajorServMin);
-}
-
-void MoveSupportServoToNewPos(int newPos){
-   int startPos = CurPos1;
-   if (CurPos1 == newPos) return;
-   if (CurPos1 < newPos) {
-     for (int pos = startPos; pos <= newPos; pos ++) { // goes from 180 degrees to 0 degrees
-       pwm1 = angleToPulse(pos);
-       pca9685.setPWM(SER1, 0, pwm1);
-       CurPos1 = pos;
-       vTaskDelay ( waiting / portTICK_PERIOD_MS);
-     };
-  } else  {  // CurPos1 > newPos
-    for (int pos = startPos; pos >= newPos; pos --) { // goes from 180 degrees to 0 degrees
-      pwm1 = angleToPulse(pos);
-      pca9685.setPWM(SER1, 0, pwm1);
-      CurPos1 = pos;
-      vTaskDelay ( waiting / portTICK_PERIOD_MS);
-   };
- }
-}
-
-void MoveSupportServoToStart(){
-  MoveSupportServoToNewPos(SupportServMin);
-}
-
-void shakeTask( void *param ) {
- int MinV = 0;
- int MaxV = 0;
- 
- Serial.printf(" \nshake: Major Servo Config %d %d",MajorServMin, MajorServMax);
- Serial.printf(" \nshake: Support Servo Config %d %d",SupportServMin, SupportServMax);
-
- StateMsg = "State: shakeTask started: count = "+String(count);
-
- if ( fReadBatteryChannel_3() > 6.0f) {
-    if (MajorServMin <= SupportServMin)
-      MinV = MajorServMin;
-    else
-      MinV = SupportServMin;
-
-    if (MajorServMax >= SupportServMax)
-      MaxV = MajorServMax;
-    else
-      MaxV = SupportServMax;
-    xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
-
-    MoveMajorServoToStart();
-
-    MoveSupportServoToStart();
- }
-
- 
- canBeStopped = true;
- 
- while (count > 0)  {
-    count--;
-    valueString4 = String(count);
-    if ( fReadBatteryChannel_3() > 6.0f) {
-      StateMsg = "State: go ahead";
-      
-      goAhead(MinV, MaxV,waiting);
- 
-      StateMsg = "State: go back";
- 
-      goBack(MinV,MaxV,waiting);
-      
-      StateMsg = "State: loop complete";
-      
-    } else {
-        Serial.println("shake:LiPo Acu is getting below 6V, servo is off");
-        vTaskDelay ( waiting / portTICK_PERIOD_MS);
-        count = 0;
-    }
-  }    
-  
-  canBeStopped = false;
-
-  StateMsg = "State: shakeTask terminated: count = "+String(count);
- 
-  if ( Task_CurrentMon != NULL) vTaskDelete(Task_CurrentMon);
-
-  StateMsg = "State: shakeTask task CurrentMon deleted";
-  
-  vTaskDelete(NULL);
-
-}
-
-void shakeTaskPerTimer( void *param ) {
- 
- unsigned long startTime = millis();
- // Previous time
- unsigned long currentTime = startTime; 
-
- String StateMsg = "State: shakeTask started: duration (millisec/min) = "+String(shakeDurationMillisec)+"/"+String(shakeDurationMillisec/60000);
-
- int MinV = 0;
- int MaxV = 0;
- 
- Serial.println(StateMsg);
-
- if ( fReadBatteryChannel_3() > 6.0f) {
-   if (MajorServMin <= SupportServMin)
-        MinV = MajorServMin;
-   else
-        MinV = SupportServMin;
-
-   if (MajorServMax >= SupportServMax)
-       MaxV = MajorServMax;
-   else
-      MaxV = SupportServMax;
-      
-   xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
-
-   MoveMajorServoToStart();
-
-   MoveSupportServoToStart();
- }
- 
- canBeStopped = true;
-
- while ( (currentTime - startTime) < shakeDurationMillisec )  {
-    currentTime = millis();
-    StateMsg = "State: shakeTask duration (soll millisec)="+String(shakeDurationMillisec)+"(is millisec/sec)= "+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
-    Serial.println(StateMsg);
-    valueString6 = String(int((shakeDurationMillisec - (currentTime - startTime))/60000));   
- 
-    if ( fReadBatteryChannel_3() > 6.0f) {
-      StateMsg = "State: go ahead";
-      goAhead(MinV, MaxV,waiting);
- 
-      StateMsg = "State: go back";
-      goBack(MinV,MaxV,waiting);
-
-      StateMsg = "State: loop complete";
-
-    } else {
-      StateMsg = "State: LiPo Acu is getting below 6V, servo is off";
-      Serial.println(StateMsg);      
-      vTaskDelay ( (waiting*100) / portTICK_PERIOD_MS);
-    }     
-  }
-  
-  canBeStopped = false;
-  StateMsg = "State: shakeTask terminated after (millisec/sec) = "+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
-  Serial.println(StateMsg);
-
-  if ( Task_CurrentMon != NULL ) vTaskDelete(Task_CurrentMon);
-    
-  vTaskDelete(NULL);
-}
 
 TaskHandle_t  CoreTaskHnd ; 
 
@@ -501,7 +116,6 @@ void setup() {
   boolean usingSPIFFS;
 
   Serial.begin(115200);
-  
 
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
@@ -509,7 +123,7 @@ void setup() {
   } else {
     File file = SPIFFS.open("/config.json");
     if(!file){
-      Serial.println("Failed to open file!");
+      Serial.println("Fai+led to open file!");
       usingSPIFFS = false;
     }    
   }
@@ -521,23 +135,22 @@ void setup() {
     }
     file.close();
   }
-  
-  pinMode(PIN_RED,   OUTPUT);
-  pinMode(PIN_GREEN, OUTPUT);
-  pinMode(PIN_BLUE,  OUTPUT);
 
+//  pinMode(PIN_RED,   OUTPUT);
+//  pinMode(PIN_GREEN, OUTPUT);
+//  pinMode(PIN_BLUE,  OUTPUT);
 
   Serial.println("PCA9685 Servo Init with OTA: red");
 
-  BlinkRGB_LED(PIN_RED, 1, 2000);
+  BlinkRGB_LED(PIN_RED, 2, 2000);
   
   Serial.println("PCA9685 Servo Init with OTA: green");
   
-  BlinkRGB_LED(PIN_GREEN, 1, 2000);
+  BlinkRGB_LED(PIN_GREEN, 2, 2000);
  
   Serial.println("PCA9685 Servo Init with OTA: blue");
 
-  BlinkRGB_LED(PIN_BLUE, 1, 2000);
+  BlinkRGB_LED(PIN_BLUE, 2, 2000);
 
   Wire.begin(I2C_SDA, I2C_SCL);
  
@@ -567,7 +180,7 @@ void setup() {
   Serial.print("Waiting for wireless connection ");
   while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000)
   {
-    analogWrite(PIN_BLUE,  247);
+    analogWrite(PIN_BLUE,  847);
     delay(250);
     Serial.print(".");
     analogWrite(PIN_BLUE,  0);
@@ -656,20 +269,19 @@ void setup() {
  
   server.begin();
 
-
   xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 50000, NULL, 1, &Task_VoltageMon);
 
   Serial.println("setup OK");    // print a message out in the serial port
 
   BlinkRGB_LED(PIN_GREEN, 3, 1000);
 
-  pwm1 = map(CurPos0, 0, 180, SERVOMIN, SERVOMAX);
- 
-  pca9685.setPWM(SER0, 0, pwm1);
-
-  pwm1 = map(CurPos1, 0, 180, SERVOMIN, SERVOMAX);
-
-  pca9685.setPWM(SER1, 0, pwm1);
+  pca9685.setCurPosMajor(CurPos0) ;
+  pca9685.setCurPosSuport(CurPos1);
+  
+  pca9685.setMajorServMin(MajorServMin); 
+  pca9685.setMajorServMax(MajorServMax); 
+  pca9685.setSupportServMin(SupportServMin);
+  pca9685.setSupportServMax(SupportServMax);
 
   BlinkRGB_LED(PIN_GREEN, 3, 1000);
   
@@ -681,7 +293,7 @@ void loop()
  // Serial.println("ArduinoOTA handle OK");    // print a message out in the serial port
   if (bLowVoltage == false) {
     analogWrite(PIN_RED, 0);
-    analogWrite(PIN_RED, 241);
+    analogWrite(PIN_RED, 841);
   }
   
   WiFiClient client = server.available();   // Listen for incoming clients
@@ -691,7 +303,7 @@ void loop()
     previousTime = currentTime;
     if (bLowVoltage == false) {
       analogWrite(PIN_RED, 0);
-      analogWrite(PIN_BLUE, 241);
+      analogWrite(PIN_BLUE, 841);
     }
 
     if (currentTime - previousTime > timeoutTime / 10) {
@@ -773,7 +385,7 @@ void loop()
             client.println("$.get(\"/?value4=\" + pos4 + \"&\"); {Connection: close};}</script>");
 
             client.println("<p>Or Duration (Minutes): <span id=\"durationM\"></span></p>");          
-            client.println("<input type=\"range\" min=\"0\" max=\"25\" class=\"slider\" id=\"shakeDurationM\" onchange=\"servoDuration(this.value)\" value=\""+valueString6+"\"/>");            
+            client.println("<input type=\"range\" min=\"0\" max=\"45\" class=\"slider\" id=\"shakeDurationM\" onchange=\"servoDuration(this.value)\" value=\""+valueString6+"\"/>");            
             client.println("<script>var slider6 = document.getElementById(\"shakeDurationM\");");
             
             client.println("var servoP6 = document.getElementById(\"durationM\"); servoP6.innerHTML = slider6.value;");
@@ -839,10 +451,18 @@ void loop()
 
               xSemaphoreTake( let_me_process, portMAX_DELAY );
 
+              pca9685.setMajorServMin(MajorServMin); 
+              pca9685.setMajorServMax(MajorServMax); 
+              pca9685.setSupportServMin(SupportServMin);
+              pca9685.setSupportServMax(SupportServMax);
+              
               count = valueString4.toInt();
               waiting = valueString5.toInt();
               shakeDurationMillisec = valueString6.toInt()*1000*60;
               valueString4 = String(count);
+
+              pca9685.setCount(count); 
+              pca9685.setWaiting(waiting);
     
               if ((bLowVoltage == false) && (canBeStopped == false)) {
                 Serial.println("shaking task is started......"); 
@@ -887,11 +507,14 @@ void loop()
               xSemaphoreTake( let_me_process, portMAX_DELAY ); 
                 
               int new_pos = valueString0.toInt();
+
+              pca9685.setMajorServMin(new_pos); 
+
               Serial.println(new_pos);
          
               xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
               
-              MoveMajorServoToNewPos(new_pos);
+              pca9685.MoveMajorServoToNewPos(new_pos);
                             
               if (Task_CurrentMon != NULL) vTaskDelete(Task_CurrentMon);
         
@@ -908,11 +531,13 @@ void loop()
               xSemaphoreTake( let_me_process, portMAX_DELAY );
   
               int new_pos = valueString1.toInt();
+
               Serial.println(new_pos);
+              pca9685.setMajorServMax(new_pos); 
 
               xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
               
-              MoveMajorServoToNewPos(new_pos);
+              pca9685.MoveMajorServoToNewPos(new_pos);
              
               if (Task_CurrentMon !=  NULL) vTaskDelete(Task_CurrentMon);
 
@@ -929,12 +554,13 @@ void loop()
 
               int new_pos = valueString2.toInt();
               Serial.println(new_pos);
+              pca9685.setSupportServMin(new_pos);
 
               //Rotate the servo
               xSemaphoreTake( let_me_process, portMAX_DELAY );
               
               xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
-              MoveSupportServoToNewPos(new_pos);
+              pca9685.MoveSupportServoToNewPos(new_pos);
           
               vTaskDelete(Task_CurrentMon);
 
@@ -949,13 +575,13 @@ void loop()
               valueString3 = header.substring(pos31+1, pos32);
               int new_pos = valueString3.toInt();
               Serial.println(new_pos);
+              pca9685.setSupportServMax(new_pos);
    
-              canBeStarted = true;
               //Rotate the servo
               xSemaphoreTake( let_me_process, portMAX_DELAY );
        
               xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
-              MoveSupportServoToNewPos(new_pos);
+              pca9685.MoveSupportServoToNewPos(new_pos);
               vTaskDelete(Task_CurrentMon);
 
               xSemaphoreGive( let_me_process );
@@ -969,7 +595,10 @@ void loop()
 
               xSemaphoreTake( let_me_process, portMAX_DELAY ); 
 
+              canBeStarted = true;
+
               count = valueString4.toInt();
+              pca9685.setCount(count); 
               
               valueString4 = String(count);
               xSemaphoreGive( let_me_process );
@@ -984,6 +613,9 @@ void loop()
             
               waiting = valueString5.toInt();
               valueString5 = String(waiting);
+
+              pca9685.setWaiting(waiting);
+
               canBeStarted = true;
               xSemaphoreGive( let_me_process );
             }        
