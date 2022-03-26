@@ -12,41 +12,15 @@
 extern const char* ssid   ;
 extern const char* password ;
 
-extern int MajorServMin, MajorServMax, SupportServMin, SupportServMax, count, waiting;
-
-// Creat object to represent PCA9685 at default I2C address
-
-// Define maximum and minimum number of "ticks" for the servo motors
-// Range from 0 to 4095
-// This determines the pulse width
-
-#define FREQUENCY 250
-#define SERVOMIN  500  // Minimum value
-#define SERVOMAX  2500  // Maximum value
- 
-// Define servo motor connections (expand as required)
-#define SER0  0   //Servo Motor 0 on connector 0
-#define SER1  1  //Servo Motor 1 on connector 12
+extern int count, waiting;
 
 
 extern bool bLowVoltage ;
 
 extern cServo_PCA9685 pca9685 ;
-  
-// Variables for Servo Motor positions (expand as required)
-
-extern int initMajorMin ;
-extern int initMajorMax ;
-
-extern int initSupportMin ;
-extern int initSupportMax ;
 
 // 16 servo objects can be created on the ESP32
  
-extern int pos ;    // variable to store the servo position
-
-extern int CurPos0  ;
-extern int CurPos1  ;
 
 extern long shakeDurationMillisec;
 

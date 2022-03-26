@@ -38,8 +38,6 @@ void BlinkRGB_LED (int PIN_LED,int times, int duration){
 }
 
 void shakeTask( void *param ) { 
-  Serial.printf(" \nshake: Major Servo Config %d %d",MajorServMin, MajorServMax);
-  Serial.printf(" \nshake: Support Servo Config %d %d",SupportServMin, SupportServMax);
 
   StateMsg = "State: shakeTask started: count = "+String(count);
 
@@ -131,12 +129,12 @@ void shakeTaskPerTimer( void *param ) {
 
   while ( (currentTime - startTime) < shakeDurationMillisec )  {
     currentTime = millis();
-    pca9685.setWaiting(waiting);
     StateMsg = "State: shakeTask duration (soll millisec)="+String(shakeDurationMillisec)+"(is millisec/sec)= "+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
     Serial.println(StateMsg);
     valueString6 = String(int((shakeDurationMillisec - (currentTime - startTime))/60000));   
  
     if ( fReadBatteryChannel_3() > 6.0f) {
+      pca9685.setWaiting(waiting);
       StateMsg = "State: go ahead";
       pca9685.goAhead();
       StateMsg = "State: go back";
@@ -219,8 +217,8 @@ void current_monitor_task(void *param)
       if ( Task_HW != NULL ) vTaskDelete(Task_HW);
       vTaskDelete(NULL);      
     }
-    snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,CurPos0);
-    snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,CurPos1);
+    snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,pca9685.getCurPosMajor());
+    snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,pca9685.getCurPosSupport());
     valueCur_1 = String( cur_1_string ) ;
     valueCur_2 = String( cur_2_string ) ;
     vTaskDelay ( 50 / portTICK_PERIOD_MS);

@@ -252,16 +252,6 @@ void setup() {
 
   Serial.println("ArduinoOTA begin OK");    // print a message out in the serial port
  
-  snprintf(full_volt_string, 8, "%2.2f", fReadBatteryChannel_3());
-  snprintf(cell_volt_string, 8, "%2.2f", fReadBatteryChannel_0());
-
-  valueVoltageCell00 = String( cell_volt_string ) ;
-  valueVoltageTotal  = String( full_volt_string ) ;
-
-  snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,CurPos0);
-  snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,CurPos1);
-  valueCur_1 = String( cur_1_string ) ;
-  valueCur_2 = String( cur_2_string ) ;
     
   let_me_process = xSemaphoreCreateMutex();
 
@@ -276,12 +266,24 @@ void setup() {
   BlinkRGB_LED(PIN_GREEN, 3, 1000);
 
   pca9685.setCurPosMajor(CurPos0) ;
-  pca9685.setCurPosSuport(CurPos1);
+  pca9685.setCurPosSupport(CurPos1);
   
   pca9685.setMajorServMin(MajorServMin); 
   pca9685.setMajorServMax(MajorServMax); 
   pca9685.setSupportServMin(SupportServMin);
   pca9685.setSupportServMax(SupportServMax);
+
+  snprintf(full_volt_string, 8, "%2.2f", fReadBatteryChannel_3());
+  snprintf(cell_volt_string, 8, "%2.2f", fReadBatteryChannel_0());
+
+  valueVoltageCell00 = String( cell_volt_string ) ;
+  valueVoltageTotal  = String( full_volt_string ) ;
+
+  snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,pca9685.getCurPosMajor());
+  snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,pca9685.getCurPosSupport());
+  valueCur_1 = String( cur_1_string ) ;
+  valueCur_2 = String( cur_2_string ) ;
+
 
   BlinkRGB_LED(PIN_GREEN, 3, 1000);
   
@@ -397,7 +399,7 @@ void loop()
 
             client.println("<p>Speed (sec per step): <span id=\"speedS\"></span></p>");          
 
-            client.println("<input type=\"range\" min=\"20\" max=\"45\" class=\"slider\" id=\"shakeSpeed\" onchange=\"servoSpeed(this.value)\" value=\""+valueString5+"\"/>");            
+            client.println("<input type=\"range\" min=\"15\" max=\"45\" class=\"slider\" id=\"shakeSpeed\" onchange=\"servoSpeed(this.value)\" value=\""+valueString5+"\"/>");            
             client.println("<script>var slider5 = document.getElementById(\"shakeSpeed\");");
             
             client.println("var servoP5 = document.getElementById(\"speedS\"); servoP5.innerHTML = slider5.value;");
@@ -657,9 +659,10 @@ void loop()
 
     snprintf(full_volt_string, 8, "%2.4f", fReadBatteryChannel_3());
     snprintf(cell_volt_string, 8, "%2.4f", fReadBatteryChannel_0());
+    
+    snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,pca9685.getCurPosMajor());
+    snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,pca9685.getCurPosSupport());
 
-    snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,CurPos0);
-    snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,CurPos1);
     valueCur_1 = String( cur_1_string ) ;
     valueCur_2 = String( cur_2_string ) ;
  

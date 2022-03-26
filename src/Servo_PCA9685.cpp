@@ -160,9 +160,9 @@ void cServo_PCA9685::setCurPosMajor(int pos)  {
     pca9685.setPWM(SER0, 0, pwm);
 } 
 
-void cServo_PCA9685::setCurPosSuport(int pos)  {
-    CurPosSuport = pos ;
-    pwm = map(CurPosSuport, 0, 180, SERVOMIN, SERVOMAX);
+void cServo_PCA9685::setCurPosSupport(int pos)  {
+    CurPosSupport = pos ;
+    pwm = map(CurPosSupport, 0, 180, SERVOMIN, SERVOMAX);
     pca9685.setPWM(SER1, 0, pwm);
 } 
 
@@ -184,7 +184,7 @@ void cServo_PCA9685::goAhead(){
       // in steps of 1 degree
       if ((pos >= SupportServMin) && (pos <= SupportServMax)) {
           pca9685.setPWM(SER1, 0, pwm);
-          CurPosSuport = pos;
+          CurPosSupport = pos;
       }
       vTaskDelay ( waiting / portTICK_PERIOD_MS);
    }
@@ -199,7 +199,7 @@ void cServo_PCA9685::goBack(){
       }
       if ((pos >= SupportServMin) && (pos <= SupportServMax )) { 
           pca9685.setPWM(SER1, 0, pwm);
-          CurPosSuport = pos;
+          CurPosSupport = pos;
       }
       vTaskDelay ( waiting / portTICK_PERIOD_MS);  
   }
@@ -224,7 +224,7 @@ void cServo_PCA9685::MoveMajorServoToNewPos(int newPos){
       for (int pos = startPos; pos <= newPos; pos += step) { // goes from 180 degrees to 0 degrees
         pwm = angleToPulse(pos);
         pca9685.setPWM(SER0, 0, pwm);
-        CurPosSuport = pos;
+        CurPosSupport = pos;
         vTaskDelay ( waiting / portTICK_PERIOD_MS);
       };
   };
@@ -236,20 +236,20 @@ void cServo_PCA9685::MoveSupportServoToStart(){
 }
 
 void cServo_PCA9685::MoveSupportServoToNewPos(int newPos){
-   int startPos = CurPosSuport;
-   if (CurPosSuport == newPos) return;
-   if (CurPosSuport < newPos) {
+   int startPos = CurPosSupport;
+   if (CurPosSupport == newPos) return;
+   if (CurPosSupport < newPos) {
      for (int pos = startPos; pos <= newPos; pos ++) { // goes from 180 degrees to 0 degrees
        pwm = angleToPulse(pos);
        pca9685.setPWM(SER1, 0, pwm);
-       CurPosSuport = pos;
+       CurPosSupport = pos;
        vTaskDelay ( waiting / portTICK_PERIOD_MS);
      };
   } else  {  // CurPos1 > newPos
     for (int pos = startPos; pos >= newPos; pos --) { // goes from 180 degrees to 0 degrees
       pwm = angleToPulse(pos);
       pca9685.setPWM(SER1, 0, pwm);
-      CurPosSuport = pos;
+      CurPosSupport = pos;
       vTaskDelay ( waiting / portTICK_PERIOD_MS);
    };
  }
@@ -267,4 +267,12 @@ int cServo_PCA9685::getSupportServMin(){
 
 int cServo_PCA9685::getSupportServMax(){
     return SupportServMax ;
+} 
+
+int cServo_PCA9685::getCurPosMajor(){
+    return CurPosMajor ;
+} 
+
+int cServo_PCA9685::getCurPosSupport(){
+    return CurPosSupport ;
 } 

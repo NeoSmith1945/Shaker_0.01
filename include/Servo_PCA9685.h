@@ -42,7 +42,7 @@ public:
   void setCount(int count); 
   void setWaiting(int waiting);
   void setCurPosMajor(int pos)  ;
-  void setCurPosSuport(int pos)  ;
+  void setCurPosSupport(int pos)  ;
   void goAhead();
   void goBack();
   void setMinV(int min); 
@@ -54,7 +54,7 @@ public:
   int getCount(); 
   int getWaiting();
   int getCurPosMajor()  ;
-  int getCurPosSuport()  ;
+  int getCurPosSupport()  ;
 
 private:
   Adafruit_PWMServoDriver pca9685 ;
@@ -72,7 +72,7 @@ private:
 // Variables for Servo Motor positions (expand as required)
   int pwm;
   int CurPosMajor  ;
-  int CurPosSuport  ;
+  int CurPosSupport  ;
 
   int angleToPulse(int ang);
 
