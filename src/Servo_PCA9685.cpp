@@ -224,7 +224,7 @@ void cServo_PCA9685::MoveMajorServoToNewPos(int newPos){
       for (int pos = startPos; pos <= newPos; pos += step) { // goes from 180 degrees to 0 degrees
         pwm = angleToPulse(pos);
         pca9685.setPWM(SER0, 0, pwm);
-        CurPosSupport = pos;
+        CurPosMajor = pos;
         vTaskDelay ( waiting / portTICK_PERIOD_MS);
       };
   };
