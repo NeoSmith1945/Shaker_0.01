@@ -1,9 +1,32 @@
 #include "tools.h"
 
+extern void sendJson(String l_type, String l_value);
+
+extern Config config;
+
+
+extern const char* ssid   ;
+extern const char* password ;
+
+extern bool bLowVoltage ;
+extern bool canBeStarted ;
+extern bool canBeStopped ;
+
+extern cServo_PCA9685 pca9685 ;
+
+extern TaskHandle_t      Task_HW ;
+extern TaskHandle_t      Task_CurrentMon ;
+extern TaskHandle_t      Task_VoltageMon ;
+extern SemaphoreHandle_t let_me_process;
+extern float Amps1_Max, Amps2_Max  ;
+
+
 const float r1 = 30000.0f; // R1 in ohm, 50K
 const float r2 =  7500.0f; // R2 in ohm, 10k potentiometer
 const long interval = 1000;  // interval at which to blink (milliseconds)
 int ledState = LOW;  // ledState used to set the LED
+
+String StateMsg;
 
 float fReadBatteryChannel_3( )
 {
@@ -39,8 +62,6 @@ void BlinkRGB_LED (int PIN_LED,int times, int duration){
 
 void shakeTask( void *param ) { 
 
-  StateMsg = "State: shakeTask started: count = "+String(count);
-
   if ( fReadBatteryChannel_3() > 6.0f) {
     if ( pca9685.getMajorServMin() <= pca9685.getSupportServMin() )
       pca9685.setMinV(pca9685.getMajorServMin());
@@ -58,53 +79,44 @@ void shakeTask( void *param ) {
 
     pca9685.MoveSupportServoToStart();
   }
-
-
   canBeStopped = true;
- 
+  int count = config.count;
   while (count > 0)  {
     count--;
-    valueString4 = String(count);
+    int waiting = config.waiting;
     if ( fReadBatteryChannel_3() > 6.0f) {
-      StateMsg = "State: go ahead";
       pca9685.setWaiting(waiting);
-      
       pca9685.goAhead();
       pca9685.setWaiting(waiting);
-
-      StateMsg = "State: go back";
- 
       pca9685.goBack();
-      
-      StateMsg = "State: loop complete";
-      
+      StateMsg = "shakeTask current count = "+String(count);
+      sendJson("SERVO_CURENT_STATUS", StateMsg);
+      sendJson("SERVO_SHAKE_AMOUNT", String(count));
+      sendJson("DISABLE_START_BTN", String("true"));
+      sendJson("ENABLE_STOP_BTN", String("true"));
     } else {
-        Serial.println("shake:LiPo Acu is getting below 6V, servo is off");
+        StateMsg = "shake: LiPo Acu is getting below 6V, servo is off";
+        Serial.println(StateMsg);
+        sendJson("SERVO_CURENT_STATUS", StateMsg);
         vTaskDelay ( waiting / portTICK_PERIOD_MS);
-        count = 0;
+        config.count = 0;
     }
   }    
-  
   canBeStopped = false;
-
-  StateMsg = "State: shakeTask terminated: count = "+String(count);
- 
+  StateMsg = "shakeTask terminated: count = "+String(config.count);
+  sendJson("SERVO_CURENT_STATUS", StateMsg);
+  sendJson("DISABLE_STOP_BTN", String("true"));
+  sendJson("ENABLE_START_BTN", String("true"));
   if ( Task_CurrentMon != NULL) vTaskDelete(Task_CurrentMon);
-
-  StateMsg = "State: shakeTask task CurrentMon deleted";
-  
   vTaskDelete(NULL);
-
 }
 
 void shakeTaskPerTimer( void *param ) {
- 
   unsigned long startTime = millis();
  // Previous time
   unsigned long currentTime = startTime; 
 
-  StateMsg = "State: shakeTask started: duration (millisec/min) = "+String(shakeDurationMillisec)+"/"+String(shakeDurationMillisec/60000);
- 
+  StateMsg = "shakeTask started: duration (millisec/min) = "+String(config.shakeDurationMillisec)+"/"+String(config.shakeDurationMillisec/60000);
   Serial.println(StateMsg);
 
   if ( fReadBatteryChannel_3() > 6.0f) {
@@ -119,52 +131,57 @@ void shakeTaskPerTimer( void *param ) {
       pca9685.setMaxV(pca9685.getSupportServMax());
   
     xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
-
     pca9685.MoveMajorServoToStart();
-
     pca9685.MoveSupportServoToStart();
   }
  
   canBeStopped = true;
 
-  while ( (currentTime - startTime) < shakeDurationMillisec )  {
+  while ( (currentTime - startTime) < config.shakeDurationMillisec )  {
+    
+    int waiting = config.waiting;
+  
     currentTime = millis();
-    StateMsg = "State: shakeTask duration (soll millisec)="+String(shakeDurationMillisec)+"(is millisec/sec)= "+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
+    StateMsg = "shakeTask soll millisec:"+String(config.shakeDurationMillisec)+"; is millisec/sec:"+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
     Serial.println(StateMsg);
-    valueString6 = String(int((shakeDurationMillisec - (currentTime - startTime))/60000));   
- 
+    String valueString6 = String(int((config.shakeDurationMillisec - (currentTime - startTime))/60000));   
+
+    sendJson("SERVO_CURENT_STATUS", StateMsg);
+    
     if ( fReadBatteryChannel_3() > 6.0f) {
       pca9685.setWaiting(waiting);
-      StateMsg = "State: go ahead";
       pca9685.goAhead();
-      StateMsg = "State: go back";
       pca9685.setWaiting(waiting);
       pca9685.goBack();
-      StateMsg = "State: loop complete";
+      sendJson("SERVO_SHAKE_DURATION", valueString6);
+      sendJson("SERVO_CURENT_STATUS", StateMsg);
+      sendJson("DISABLE_START_BTN", String("true"));
+      sendJson("ENABLE_STOP_BTN", String("true"));
     } else {
-      StateMsg = "State: LiPo Acu is getting below 6V, servo is off";
+      StateMsg = "LiPo Acu is getting below 6V, servo is off";
+      sendJson("SERVO_CURENT_STATUS", StateMsg);
       Serial.println(StateMsg);      
       vTaskDelay ( (waiting*100) / portTICK_PERIOD_MS);
     }     
   }
   
   canBeStopped = false;
-  StateMsg = "State: shakeTask terminated after (millisec/sec) = "+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
+  StateMsg = "shakeTask terminated after (millisec/sec) = "+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
   Serial.println(StateMsg);
-
+  sendJson("SERVO_CURENT_STATUS", StateMsg);
+  sendJson("DISABLE_STOP_BTN", String("true"));
+  sendJson("ENABLE_START_BTN", String("true"));
   if ( Task_CurrentMon != NULL ) vTaskDelete(Task_CurrentMon);
-    
   vTaskDelete(NULL);
 }
 
 void current_monitor_task(void *param)
-{
+{ float Voltage1, Voltage2  ; // Gets you mV
+  float Amps1 , Amps2  ;
   float ACSValue1 = 0.0, Samples1 = 0.0, AvgACS1 = 0.0,  BaseVol = 2.08f ;
   float ACSValue2 = 0.0, Samples2 = 0.0, AvgACS2 = 0.0 ;
+  float vRefScale = (3.3f / 4096.0f) ; 
 
-  //Change BaseVol as per your reading in the first step.                            
-
-  float vRefScale = (3.3f / 4096.0f) ;      
   Voltage1 = 0; 
   Voltage2 = 0 ; // Gets you mV
   Amps1 = 0; 
@@ -203,7 +220,8 @@ void current_monitor_task(void *param)
     if (Amps2 >= Amps2_Max) Amps2_Max = Amps2;
 
     if ( Amps2_Max > 2.5 ) {
-      StateMsg = "current_monitor_task: Max current(3) more than 2.5 A, servo will be off";
+      StateMsg = "current monitor: Max current(3) more than 2.5 A, servo will be off";
+      sendJson("SERVO_CURENT_STATUS", StateMsg);
       canBeStopped = false;
       xSemaphoreGive(  let_me_process ); 
       if ( Task_HW != NULL ) vTaskDelete(Task_HW);
@@ -211,16 +229,13 @@ void current_monitor_task(void *param)
     }
 
     if ( Amps1_Max > 2.5 ) {
-      StateMsg = "current_monitor: Max current(1) more than 2.5 A, servo will be off";
+      StateMsg = "current monitor: Max current(1) more than 2.5 A, servo will be off";
+      sendJson("SERVO_CURENT_STATUS", StateMsg);
       canBeStopped = false;
       xSemaphoreGive(  let_me_process ); 
       if ( Task_HW != NULL ) vTaskDelete(Task_HW);
       vTaskDelete(NULL);      
     }
-    snprintf(cur_1_string, 12, "%2.2f/(%3d)", Amps1_Max,pca9685.getCurPosMajor());
-    snprintf(cur_2_string, 12, "%2.2f/(%3d)", Amps2_Max,pca9685.getCurPosSupport());
-    valueCur_1 = String( cur_1_string ) ;
-    valueCur_2 = String( cur_2_string ) ;
     vTaskDelay ( 50 / portTICK_PERIOD_MS);
   } 
 }

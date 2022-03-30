@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html><head><title>Shaker Calibration</title></head>
+<body>
+  <style>body { text-align: center; font-family: "Trebuchet MS", Arial; margin-left:auto; margin-right:auto;}
+    .slider { width: 60%; height: 8.4px; cursor: pointer; box-shadow: 1px 1px 1p #000000, 0px 0px 1px #0d0d0d; background #3071a9; border-radius: 1.3px;
+border: 0.2px solid #010101; }
+.button { height:40px; width:70px}
+</style>
+
+<h1>Shaker Configurator</h1>
+</h1>Let's configure shaker for the baby carriage</h2>
+<p>Positions Servo Major (min,max): (<span id="servoPosOneMinS">-</span>,<span id="servoPosOneMaxS">-</span>)</p>
+<input type='range' min='90' max='180' class='slider' id='servoSliderOneMin' value='100'/>
+<input type='range' min='90' max='180' class='slider' id='servoSliderOneMax' value='100'/>
+<p>Positions Servo Support (min,max):(<span id="servoPosTwoMinS">-</span>,<span id="servoPosTwoMaxS">-</span>)</p>
+<input type="range" min="90" max="180" class="slider" id="servoSliderTwoMin" value="110"/>
+<input type="range" min="90" max="180" class="slider" id="servoSliderTwoMax" value="163"/>
+<p>Duration (amount): <span id="AmountShow">-</span></p>
+<input type="range" min="0" max="100" class="slider" id="shakeAmount" value="0"/>
+<p>Or Duration (Minutes): <span id="DurationShow">-</span></p>
+<input type="range" min="0" max="45" class="slider" id="shakeDuration" value="5"/>
+<p>Speed (sec per step): <span id="speedShow">-</span></p>
+<input type="range" min="20" max="45" class="slider" id="shakeSpeed" value="20"/>
+<p>Supplay Voltage Cell/Total: <span id="servoPowerSupCelShow">-</span>V/<span id="servoPowerSupCelAllShow">-</span>V</p>
+<p>Current Sensor 1/2: <span id="servoCurrentConsum1">-</span>A/<span id="servoCurrentConsum2">-</span>A</p>
+<p>Position Sensor 1/2: <span id="servoCurrentPosition1">-</span>/<span id="servoCurrentPosition2">-</span></p>
+<p><input type="submit" class="button" id="btnStart" value="START"/>
+<input type="submit" class="button" id="btnStop" value="STOP"/></p></span>
+<p>Status: <span id="CurrentStatus">-</span></p>
+</body>
+
+<script>
+  var slider0 = document.getElementById('servoSliderOneMin');
+  var slider1 = document.getElementById('servoSliderOneMax');
+  var slider2 = document.getElementById('servoSliderTwoMin');
+  var slider3 = document.getElementById('servoSliderTwoMax');
+  var slider4 = document.getElementById("shakeAmount");
+  var slider5 = document.getElementById("shakeDuration");
+  var slider6 = document.getElementById("shakeSpeed");
+  var btnStop = document.getElementById("btnStop");
+  var btnStart = document.getElementById("btnStart");
+
+  var outServoPosOneMin = document.getElementById('servoPosOneMinS');
+  var outServoPosOneMax = document.getElementById('servoPosOneMaxS');
+  var outServoPosTwoMin = document.getElementById('servoPosTwoMinS');
+  var outServoPosTwoMax = document.getElementById('servoPosTwoMaxS');
+  var outAmountShow = document.getElementById('AmountShow');
+  var outDurationShow = document.getElementById('DurationShow');
+  var outSpeedShow = document.getElementById('speedShow');
+  var outServoPowerSupCelShow = document.getElementById('servoPowerSupCelShow');
+  var outServoPowerSupCelAllShow = document.getElementById('servoPowerSupCelAllShow');
+  var outServoCurrentConsum1 = document.getElementById('servoCurrentConsum1');
+  var outServoCurrentConsum2 = document.getElementById('servoCurrentConsum2');
+  var outCurrentStatus = document.getElementById('CurrentStatus');
+  var outServoCurrentPos1 = document.getElementById('servoCurrentPosition1');
+  var outServoCurrentPos2 = document.getElementById('servoCurrentPosition2');
+  
+  slider0.addEventListener('click', sliderPosOneMin_changed);
+  slider1.addEventListener('click', sliderPosOneMax_changed);
+  slider2.addEventListener('click', sliderPosTwoMin_changed);
+  slider3.addEventListener('click', sliderPosTwoMax_changed);
+  slider4.addEventListener('click', sliderShakeAmount_changed);
+  slider5.addEventListener('click', sliderShakeDuration_changed);
+  slider6.addEventListener('click', sliderShakeSpeed_changed);
+  btnStop.addEventListener('click', btnStop_changed);
+  btnStart.addEventListener('click', btnStart_changed);
+
+  var Socket;
+  
+  function init() {
+  //  Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
+    Socket = new WebSocket('ws://192.168.178.68:81/');
+    Socket.onmessage = function(event) {
+      processCommand(event);
+    };
+  }
+  
+  function sliderPosOneMin_changed () {
+    var l_SERVO_PosOneMin = slider0.value;
+	  console.log(l_SERVO_PosOneMin);
+	  var msg = { type: 'SERVO_POS_ONE_MIN', value: l_SERVO_PosOneMin};
+	  Socket.send(JSON.stringify(msg)); 
+  }
+
+  function sliderPosOneMax_changed () {
+    var l_SERVO_PosOneMax = slider1.value;
+	  console.log(l_SERVO_PosOneMax);
+	  var msg = { type: 'SERVO_POS_ONE_MAX', value: l_SERVO_PosOneMax};
+	  Socket.send(JSON.stringify(msg)); 
+  }
+
+  function sliderPosTwoMin_changed () {
+    var l_SERVO_PosTwoMin = slider2.value;
+	  console.log(l_SERVO_PosTwoMin);
+	  var msg = { type: 'SERVO_POS_TWO_MIN', value: l_SERVO_PosTwoMin};
+	  Socket.send(JSON.stringify(msg)); 
+  }
+
+  function sliderPosTwoMax_changed () {
+    var l_SERVO_PosTwoMax = slider3.value;
+	  console.log(l_SERVO_PosTwoMax);
+	  var msg = { type: 'SERVO_POS_TWO_MAX', value: l_SERVO_PosTwoMax};
+	  Socket.send(JSON.stringify(msg)); 
+  }
+  
+  function sliderShakeAmount_changed () {
+    var l_SERVO_ShakeAmount = slider4.value;
+	  console.log(l_SERVO_ShakeAmount);
+    btnStart.removeAttribute('disabled')
+	  var msg = { type: 'SERVO_SHAKE_AMOUNT', value: l_SERVO_ShakeAmount};
+	  Socket.send(JSON.stringify(msg));
+  }
+
+  function sliderShakeDuration_changed () {
+    var l_SERVO_shakeDuration = slider5.value;
+	  console.log(l_SERVO_shakeDuration);
+    btnStart.removeAttribute('disabled');
+    var msg = { type: 'SERVO_SHAKE_DURATION', value: l_SERVO_shakeDuration};
+	  Socket.send(JSON.stringify(msg));
+  }
+
+  function sliderShakeSpeed_changed () {
+    var l_SERVO_ShakeSpeed = slider6.value;
+ 	  console.log(l_SERVO_ShakeSpeed);
+	  var msg = { type: 'SERVO_SHAKE_SPEED', value: l_SERVO_ShakeSpeed};
+	  Socket.send(JSON.stringify(msg));
+  }
+
+  function btnStop_changed () {
+	  console.log("button Stop is clicked");
+    btnStop.setAttribute('disabled', true);
+    btnStart.removeAttribute('disabled') ;
+    var msg = { type: 'SERVO_STOP', value: true};
+    Socket.send(JSON.stringify(msg));
+  }
+
+  function btnStart_changed () {
+ 	  console.log("button Start is clkicked");
+    btnStart.setAttribute('disabled', true);
+    btnStop.removeAttribute('disabled') ;
+    var msg = { type: 'SERVO_START', value: true};
+	  Socket.send(JSON.stringify(msg));
+  }
+
+  function processCommand(event) {
+	  var obj = JSON.parse(event.data);
+    var type = obj.type;
+    if (type.localeCompare("SERVO_POS_ONE_MIN") == 0) { 
+	    var l_SERVO_PosOneMin = parseInt(obj.value); 
+	    console.log(l_SERVO_PosOneMin); 
+	    slider0.value = l_SERVO_PosOneMin; 
+	    outServoPosOneMin.innerHTML = l_SERVO_PosOneMin;
+    }
+    else if (type.localeCompare("SERVO_POS_ONE_MAX") == 0) { 
+	    var l_SERVO_PosOneMax = parseInt(obj.value); 
+	    console.log(l_SERVO_PosOneMax); 
+	    slider1.value = l_SERVO_PosOneMax; 
+	    outServoPosOneMax.innerHTML = l_SERVO_PosOneMax;
+    }
+    else if (type.localeCompare("SERVO_POS_TWO_MIN") == 0) { 
+	    var l_SERVO_PosTwoMin = parseInt(obj.value); 
+	    console.log(l_SERVO_PosTwoMin); 
+	    slider2.value = l_SERVO_PosTwoMin; 
+	    outServoPosTwoMin.innerHTML = l_SERVO_PosTwoMin;
+    }
+    else if (type.localeCompare("SERVO_POS_TWO_MAX") == 0) { 
+	    var l_SERVO_PosTwoMax = parseInt(obj.value); 
+	    console.log(l_SERVO_PosTwoMax); 
+	    slider3.value = l_SERVO_PosTwoMax; 
+      outServoPosTwoMax.innerHTML = l_SERVO_PosTwoMax;
+	  }
+    else if (type.localeCompare("SERVO_SHAKE_AMOUNT") == 0) { 
+	    var l_SERVO_SHAKE_AMOUNT = parseInt(obj.value); 
+	    console.log(l_SERVO_SHAKE_AMOUNT); 
+	    slider4.value = l_SERVO_SHAKE_AMOUNT;
+      outAmountShow.innerHTML = l_SERVO_SHAKE_AMOUNT; 
+	  }
+    else if (type.localeCompare("SERVO_SHAKE_DURATION") == 0) { 
+	    var l_SERVO_SHAKE_DURATION = parseInt(obj.value); 
+	    console.log(l_SERVO_SHAKE_DURATION); 
+	    slider5.value = l_SERVO_SHAKE_DURATION;
+      outDurationShow.innerHTML = l_SERVO_SHAKE_DURATION; 
+	  }
+    else if (type.localeCompare("SERVO_SHAKE_SPEED") == 0) { 
+	    var l_SERVO_SHAKE_SPEED = parseInt(obj.value); 
+	    console.log(l_SERVO_SHAKE_SPEED); 
+	    slider6.value = l_SERVO_SHAKE_SPEED; 
+      outSpeedShow.innerHTML = l_SERVO_SHAKE_SPEED;
+	  }
+    else if (type.localeCompare("SERVO_POWER_VOLTAGE_CELL") == 0) { 
+	    var l_SERVO_VOLTAGE_CELL = obj.value; 
+	    console.log(l_SERVO_VOLTAGE_CELL); 
+	    outServoPowerSupCelShow.innerHTML = l_SERVO_VOLTAGE_CELL;
+	  }
+    else if (type.localeCompare("SERVO_POWER_VOLTAGE_ALL") == 0) { 
+	    var l_SERVO_POWER_VOLTAGE_ALL = obj.value; 
+	    console.log(l_SERVO_POWER_VOLTAGE_ALL); 
+      outServoPowerSupCelAllShow.innerHTML = l_SERVO_POWER_VOLTAGE_ALL;
+	  }
+    else if (type.localeCompare("SERVO_ONE_MAX_CURRENT") == 0) { 
+	    var l_SERVO_ONE_MAX_CURRENT = obj.value; 
+	    console.log(l_SERVO_ONE_MAX_CURRENT); 
+	    outServoCurrentConsum1.innerHTML = l_SERVO_ONE_MAX_CURRENT;
+	  }
+    else if (type.localeCompare("SERVO_ONE_CURRENT_POS") == 0) { 
+	    var l_SERVO_ONE_CURRENT_POS = obj.value; 
+	    console.log(l_SERVO_ONE_CURRENT_POS); 
+	    outServoCurrentPos1.innerHTML = l_SERVO_ONE_CURRENT_POS;
+	  }
+    else if (type.localeCompare("SERVO_TWO_MAX_CURRENT") == 0) { 
+	    var l_SERVO_TWO_MAX_CURRENT = obj.value; 
+	    console.log(l_SERVO_TWO_MAX_CURRENT); 
+      outServoCurrentConsum2.innerHTML = l_SERVO_TWO_MAX_CURRENT;
+	  }   
+    else if (type.localeCompare("SERVO_TWO_CURRENT_POS") == 0) { 
+	    var l_SERVO_TWO_CURRENT_POS = obj.value; 
+	    console.log(l_SERVO_TWO_CURRENT_POS); 
+      outServoCurrentPos2.innerHTML = l_SERVO_TWO_CURRENT_POS;
+	  }   
+    else if (type.localeCompare("SERVO_CURENT_STATUS") == 0) { 
+	    var l_SERVO_STATUS = obj.value; 
+	    console.log(l_SERVO_STATUS); 
+      outCurrentStatus.innerHTML = l_SERVO_STATUS;
+	  }   
+    else if (type.localeCompare("DISABLE_START_BTN") == 0) { 
+	    console.log("disable start btn"); 
+      btnStart.setAttribute('disabled', true);
+	  }   
+    else if (type.localeCompare("ENABLE_START_BTN") == 0) { 
+	    console.log("enable start btn"); 
+      btnStop.removeAttribute('disabled') ;
+	  }   
+    else if (type.localeCompare("DISABLE_STOP_BTN") == 0) { 
+	    console.log("disable start btn"); 
+      btnStop.setAttribute('disabled', true);
+	  }   
+    else if (type.localeCompare("ENABLE_STOP_BTN") == 0) { 
+	    console.log("enable start btn"); 
+      btnStop.removeAttribute('disabled') ;    
+	  }   
+  }
+  
+  window.onload = function(event) {
+    init();
+  }
+</script>
+</html>

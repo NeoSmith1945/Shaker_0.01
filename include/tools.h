@@ -8,62 +8,33 @@
 #define PIN_GREEN  25 // GIOP27
 #define PIN_BLUE   32 // GIOP32
 
-
-extern const char* ssid   ;
-extern const char* password ;
-
-extern int count, waiting;
-
-
-extern bool bLowVoltage ;
-
-extern cServo_PCA9685 pca9685 ;
-
-// 16 servo objects can be created on the ESP32
- 
-
-extern long shakeDurationMillisec;
-
-extern char full_volt_string[10];
-extern char cell_volt_string[10];
-extern char cur_1_string[14];
-extern char cur_2_string[14];
-
-extern bool canBeStarted ;
-extern bool canBeStopped ;
-
-extern TaskHandle_t      Task_HW ;
-extern TaskHandle_t      Task_CurrentMon ;
-extern TaskHandle_t      Task_VoltageMon ;
-
-extern SemaphoreHandle_t let_me_process;
-
-extern String StateMsg;
-extern float Voltage1;
-extern float Voltage2  ; // Gets you mV
-extern float Amps1 , Amps2  ;
-extern float Amps1_Max, Amps2_Max  ;
-
-extern String valueString4;
-extern String valueString5;
-extern String valueString6;
-
-extern String valueVoltageCell00 ;
-extern String valueVoltageTotal ;
-extern String valueCur_1 ;
-extern  String valueCur_2 ;
-
-void blinkLED() ;
+struct Config {
+  char instance[64];
+  int  maxMajor[3];
+  int  minMajor[3];
+  int  maxSupport[3];
+  int  minSupport[3];
+  int  shakeMode;
+  int initMajorMin;
+  int initMajorMax;
+  int initSupportMin ;
+  int initSupportMax ;
+  int CurPos0 ;
+  int CurPos1  ;
+  int MajorServMin;
+  int MajorServMax;
+  int SupportServMin; 
+  int SupportServMax; 
+  int count;
+  int waiting;
+  long shakeDurationMillisec ;
+};
 
 float fReadBatteryChannel_3( );
 float fReadBatteryChannel_0( );
-
+void blinkLED() ;
 void BlinkRGB_LED (int PIN_LED, int times, int duration);
-
 void current_monitor_task(void *param);
-
 void shakeTaskPerTimer( void *param ) ;
-
 void shakeTask( void *param ) ;
-
 void VoltageMonTask( void *param );
