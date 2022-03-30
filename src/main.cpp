@@ -26,21 +26,20 @@ bool bLowVoltage = false;
 
 // Set web server port number to 80
 WebServer server(80);
-
 // Initialization of webserver and websocket
 WebSocketsServer webSocket = WebSocketsServer(81);    // the websocket uses port 81 (standard port for websockets
 
 cServo_PCA9685 pca9685 = cServo_PCA9685(0x40, Wire);
   
-
 // Current time
 unsigned long currentTime = millis();
 // Previous time
 unsigned long previousTime = 0; 
+
+unsigned long  updateTime = 0;
+
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
-
-
 
 bool canBeStarted = false;
 bool canBeStopped = false;
@@ -62,8 +61,6 @@ Config config;                         // <- global configuration object
 int clientCounter = 0;
 String StrIndexHtml;
 File index_html;
-
-
 
 void setup() {
   File file;
@@ -204,8 +201,6 @@ void setup() {
   webSocket.begin();                                  // start websocket
   webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
 }
-
-unsigned long  updateTime = 0;
 
 void loop()
 {
