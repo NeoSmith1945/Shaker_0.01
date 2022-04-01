@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html><head><title>Shaker Calibration</title></head>
+<html><head><title>Shaker Calibration</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+ </head>
 <body>
   <style>body { text-align: center; font-family: "Trebuchet MS", Arial; margin-left:auto; margin-right:auto;}
     .slider { width: 60%; height: 8.4px; cursor: pointer; box-shadow: 1px 1px 1p #000000, 0px 0px 1px #0d0d0d; background #3071a9; border-radius: 1.3px;
@@ -27,6 +29,12 @@ border: 0.2px solid #010101; }
 <p><input type="submit" class="button" id="btnStart" value="START"/>
 <input type="submit" class="button" id="btnStop" value="STOP"/></p></span>
 <p>Status: <span id="CurrentStatus">-</span></p>
+<form>
+  <p>OTA off/on:</p>
+  <div>
+    <input type='radio' id='OTA' name='ota_mode'><label for='OTA_Switch'>On/Off</label>
+  </div>
+</form>
 </body>
 
 <script>
@@ -39,6 +47,8 @@ border: 0.2px solid #010101; }
   var slider6 = document.getElementById("shakeSpeed");
   var btnStop = document.getElementById("btnStop");
   var btnStart = document.getElementById("btnStart");
+
+  document.getElementById('OTA').addEventListener('click', ota_changed);
 
   var outServoPosOneMin = document.getElementById('servoPosOneMinS');
   var outServoPosOneMax = document.getElementById('servoPosOneMaxS');
@@ -66,41 +76,64 @@ border: 0.2px solid #010101; }
   btnStart.addEventListener('click', btnStart_changed);
 
   var Socket;
-  
+  var SocketOpen = false;
+
   function init() {
-  //  Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
+//    Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
     Socket = new WebSocket('ws://192.168.178.68:81/');
+
     Socket.onmessage = function(event) {
       processCommand(event);
     };
-  }
+
+    Socket.addEventListener("open", () => {
+    console.log(`[websockets] Connected to ws://192.168.178.68:81/`);
+    SocketOpen = true;
   
+    });
+  }
+
+  function ota_changed() {
+	  var l_ota_selected = 0;
+    if (SocketOpen)  {
+  	  if(document.getElementById('OTA').checked == true) {
+	      l_ota_selected = 1;
+	    } else {
+	      l_ota_selected = 0;
+	    }
+	    console.log(l_OTA_selected);
+      var msg = { type: 'OTA_selected', value: l_OTA_selected};
+    }  	 
+  }
+ 
+
+
   function sliderPosOneMin_changed () {
     var l_SERVO_PosOneMin = slider0.value;
 	  console.log(l_SERVO_PosOneMin);
 	  var msg = { type: 'SERVO_POS_ONE_MIN', value: l_SERVO_PosOneMin};
-	  Socket.send(JSON.stringify(msg)); 
+	  if (SocketOpen) Socket.send(JSON.stringify(msg)); 
   }
 
   function sliderPosOneMax_changed () {
     var l_SERVO_PosOneMax = slider1.value;
 	  console.log(l_SERVO_PosOneMax);
 	  var msg = { type: 'SERVO_POS_ONE_MAX', value: l_SERVO_PosOneMax};
-	  Socket.send(JSON.stringify(msg)); 
+	  if (SocketOpen) Socket.send(JSON.stringify(msg)); 
   }
 
   function sliderPosTwoMin_changed () {
     var l_SERVO_PosTwoMin = slider2.value;
 	  console.log(l_SERVO_PosTwoMin);
 	  var msg = { type: 'SERVO_POS_TWO_MIN', value: l_SERVO_PosTwoMin};
-	  Socket.send(JSON.stringify(msg)); 
+	  if (SocketOpen) Socket.send(JSON.stringify(msg)); 
   }
 
   function sliderPosTwoMax_changed () {
     var l_SERVO_PosTwoMax = slider3.value;
 	  console.log(l_SERVO_PosTwoMax);
 	  var msg = { type: 'SERVO_POS_TWO_MAX', value: l_SERVO_PosTwoMax};
-	  Socket.send(JSON.stringify(msg)); 
+	  if (SocketOpen) Socket.send(JSON.stringify(msg)); 
   }
   
   function sliderShakeAmount_changed () {
@@ -108,7 +141,7 @@ border: 0.2px solid #010101; }
 	  console.log(l_SERVO_ShakeAmount);
     btnStart.removeAttribute('disabled')
 	  var msg = { type: 'SERVO_SHAKE_AMOUNT', value: l_SERVO_ShakeAmount};
-	  Socket.send(JSON.stringify(msg));
+	  if (SocketOpen) Socket.send(JSON.stringify(msg));
   }
 
   function sliderShakeDuration_changed () {
@@ -116,30 +149,36 @@ border: 0.2px solid #010101; }
 	  console.log(l_SERVO_shakeDuration);
     btnStart.removeAttribute('disabled');
     var msg = { type: 'SERVO_SHAKE_DURATION', value: l_SERVO_shakeDuration};
-	  Socket.send(JSON.stringify(msg));
+	  if (SocketOpen) Socket.send(JSON.stringify(msg));
   }
 
   function sliderShakeSpeed_changed () {
     var l_SERVO_ShakeSpeed = slider6.value;
  	  console.log(l_SERVO_ShakeSpeed);
 	  var msg = { type: 'SERVO_SHAKE_SPEED', value: l_SERVO_ShakeSpeed};
-	  Socket.send(JSON.stringify(msg));
+	  if (SocketOpen) Socket.send(JSON.stringify(msg));
   }
 
   function btnStop_changed () {
 	  console.log("button Stop is clicked");
-    btnStop.setAttribute('disabled', true);
-    btnStart.removeAttribute('disabled') ;
-    var msg = { type: 'SERVO_STOP', value: true};
-    Socket.send(JSON.stringify(msg));
+    if (SocketOpen) {
+      btnStop.setAttribute('disabled', true);
+      btnStart.removeAttribute('disabled') ;
+      var msg = { type: 'SERVO_STOP', value: true};
+      Socket.send(JSON.stringify(msg));
+    } else
+      console.log("Socket is not open yet");
   }
 
   function btnStart_changed () {
  	  console.log("button Start is clkicked");
-    btnStart.setAttribute('disabled', true);
-    btnStop.removeAttribute('disabled') ;
-    var msg = { type: 'SERVO_START', value: true};
-	  Socket.send(JSON.stringify(msg));
+    if (SocketOpen) {
+      btnStart.setAttribute('disabled', true);
+      btnStop.removeAttribute('disabled') ;
+      var msg = { type: 'SERVO_START', value: true};
+	    Socket.send(JSON.stringify(msg));
+    } else
+      console.log("Socket is not open yet");
   }
 
   function processCommand(event) {
@@ -238,6 +277,15 @@ border: 0.2px solid #010101; }
 	    console.log("enable start btn"); 
       btnStop.removeAttribute('disabled') ;    
 	  }   
+    else if (type.localeCompare("OTA_selected") == 0) {
+      var l_OTA_STATUS = obj.value;
+      if (l_OTA_STATUS == 1) { 
+        console.log("ota enabled"); 
+        document.getElementById('OTA').checked = true
+      }
+      else
+        document.getElementById('OTA').checked = false
+    }
   }
   
   window.onload = function(event) {

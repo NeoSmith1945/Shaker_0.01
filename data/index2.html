@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html><head><title>Shaker Controller</title></head>
+<html><head><title>Shaker Controller</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+</head>
 <body>
 <style>body { text-align: center; font-family: "Trebuchet MS", Arial; margin-left:auto; margin-right:auto;}
         .slider { width: 60%; height: 15px; cursor: pointer; box-shadow: 3px 3px 1p #000000, 1px 1px 1px #0d0d0d; background #3071a9; border-radius: 5px;
@@ -20,20 +22,23 @@
 <br>Set servo intensity level: <span id='SPEED_VALUE'>-</span> <br>
 <input type='range' min='15' max='40' value='25' class='slider' id='SERVO_INTENSITY'> <br>
 <p>Duration (amount): <span id="AmountShow">-</span></p>
-<input type="range" min="0" max="100" class="slider" id="shakeAmount" value="0"/>
+<input type="range" min="0" max="120" value='0' class="slider" id="shakeAmount" value="0"/>
 <p>Or Duration (Minutes): <span id="DurationShow">-</span></p>
-<input type="range" min="0" max="45" class="slider" id="shakeDuration" value="5"/>
+<input type="range" min="0" max="45" value='0' class="slider" id="shakeDuration" value="0"/>
 <p>Supplay Voltage Cell/Total: <span id="servoPowerSupCelShow">-</span>V/<span id="servoPowerSupCelAllShow">-</span>V</p>
 <p>Current Sensor 1/2: <span id="servoCurrentConsum1">-</span>A/<span id="servoCurrentConsum2">-</span>A</p>
 <p>Position Sensor 1/2: <span id="servoCurrentPosition1">-</span>/<span id="servoCurrentPosition2">-</span></p>
 <p><input type="submit" class="button" id="btnStart" value="START" />
 <input type="submit" class="button" id="btnStop" value="STOP" /></p></span>
 <p>Status: <span id="CurrentStatus">-</span></p>
+<p>OTA off/on:<div> <input type='checkbox' id='OTA' name='ota_mode'></div></p>
+
 </body>
 <script>
   document.getElementById('MOD_0').addEventListener('click', mod_changed);
   document.getElementById('MOD_1').addEventListener('click', mod_changed);
   document.getElementById('MOD_2').addEventListener('click', mod_changed);
+  document.getElementById('OTA').addEventListener('click', ota_checked);
 
   var slider = document.getElementById('SERVO_INTENSITY');
   var slider4 = document.getElementById("shakeAmount");
@@ -59,16 +64,63 @@
   btnStop.addEventListener('click', btnStop_changed);
   btnStart.addEventListener('click', btnStart_changed);
 
+
+
   var Socket;
   
+  var Socket;
+  var SocketOpen = false;
+
   function init() {
-  //  Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
+//    Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
     Socket = new WebSocket('ws://192.168.178.68:81/');
+
     Socket.onmessage = function(event) {
       processCommand(event);
     };
+
+    slider.setAttribute('disabled', true) ;
+    slider4.setAttribute('disabled', true) ;
+    slider5.setAttribute('disabled', true) ;
+    btnStop.setAttribute('disabled', true) ;
+    btnStart.setAttribute('disabled', true) ;
+
+    document.getElementById('MOD_0').setAttribute('disabled', true) ;
+    document.getElementById('MOD_1').setAttribute('disabled', true) ;
+    document.getElementById('MOD_2').setAttribute('disabled', true) ;
+    document.getElementById('OTA').setAttribute('disabled', true) ;
+
+    Socket.addEventListener("open", () => {
+      console.log(`[websockets] Connected to ws://192.168.178.68:81/`);
+      SocketOpen = true;
+      slider.removeAttribute('disabled');
+      slider4.removeAttribute('disabled') ;
+      slider5.removeAttribute('disabled') ;
+      document.getElementById('MOD_0').removeAttribute('disabled') ;
+      document.getElementById('MOD_1').removeAttribute('disabled') ;
+      document.getElementById('MOD_2').removeAttribute('disabled') ;
+      document.getElementById('OTA').removeAttribute('disabled') ;
+    });
   }
-  
+
+  function ota_checked() {
+	  var l_ota_selected = 0;
+  	
+    if(document.getElementById('OTA').checked == true) {
+	      l_ota_selected = 1;
+	  } else {
+	      l_ota_selected = 0;
+	  }
+	  console.log(l_ota_selected);
+    
+    if (SocketOpen)  {
+      var msg = { type: 'OTA_selected', value: l_ota_selected};
+      Socket.send(JSON.stringify(msg));
+    }
+    else  	 
+      console.log("Error: Socket is not open!!");
+  }
+   
   function mod_changed() {
 	var l_MOD_selected = 0;
 	if(document.getElementById('MOD_1').checked == true) {
@@ -77,8 +129,12 @@
 	  l_MOD_selected = 2;
 	}
 	console.log(l_MOD_selected);
+  if (SocketOpen)  {
     var msg = { type: 'MOD_selected', value: l_MOD_selected};
-  	Socket.send(JSON.stringify(msg)); 
+  	Socket.send(JSON.stringify(msg));
+  }
+    else  	 
+      console.log("Error: Socket is not open!!");
   }
   
 function sliderSevoIntensity_changed () {
@@ -91,7 +147,7 @@ function sliderSevoIntensity_changed () {
 function sliderShakeAmount_changed () {
   var l_SERVO_ShakeAmount = slider4.value;
 	console.log(l_SERVO_ShakeAmount);
-  btnStart.removeAttribute('disabled')
+  btnStart.removeAttribute('disabled');
 	var msg = { type: 'SERVO_SHAKE_AMOUNT', value: l_SERVO_ShakeAmount};
 	Socket.send(JSON.stringify(msg));
 }
@@ -203,6 +259,15 @@ function processCommand(event) {
 	  console.log("enable start btn"); 
     btnStop.removeAttribute('disabled') ;    
 	}   
+  else if (type.localeCompare("OTA_selected") == 0) {
+    var l_OTA_STATUS = obj.value;
+    if (l_OTA_STATUS == 1) { 
+      console.log("ota enabled"); 
+      document.getElementById('OTA').checked = true
+    }
+    else
+      document.getElementById('OTA').checked = false
+  }
 }
 
 window.onload = function(event) {

@@ -35,9 +35,7 @@ cServo_PCA9685 pca9685 = cServo_PCA9685(0x40, Wire);
 unsigned long currentTime = millis();
 // Previous time
 unsigned long previousTime = 0; 
-
 unsigned long  updateTime = 0;
-
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 
@@ -83,11 +81,9 @@ void setup() {
       StrIndexHtml = index_html.readString();
   }
   
-  Serial.println("PCA9685 Servo Init with OTA: red");
+  Serial.println("PCA9685 Servo Init with OTA: red, green and blue");
   BlinkRGB_LED(PIN_RED, 2, 2000);
-  Serial.println("PCA9685 Servo Init with OTA: green");
   BlinkRGB_LED(PIN_GREEN, 2, 2000);
-  Serial.println("PCA9685 Servo Init with OTA: blue");
   BlinkRGB_LED(PIN_BLUE, 2, 2000);
   Wire.begin(I2C_SDA, I2C_SCL);
   // Print to monitor
@@ -142,7 +138,7 @@ void setup() {
   // Password can be set with it's md5 value as well
   // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
   // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
-
+  if (config.OTA_Switch) { 
   ArduinoOTA
     .onStart([]() {
       String type;
@@ -175,7 +171,9 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
   Serial.println("ArduinoOTA begin OK");    // print a message out in the serial port
-     
+  } else 
+    Serial.println("OTA disabled");
+
   let_me_process = xSemaphoreCreateMutex();
 
   Serial.println("server begin OK");    // print a message out in the serial port
@@ -185,6 +183,16 @@ void setup() {
 
   BlinkRGB_LED(PIN_GREEN, 3, 1000);
 
+ 
+  if (usingSPIFFS_html)  server.on("/", [](){ server.send(200,"text/html", StrIndexHtml);});
+  else server.on("/", [](){ server.send(400,"text/html", String("Not found index.html"));});
+
+  server.begin();                                     // start web server
+  webSocket.begin();                                  // start websocket
+  webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
+
+  BlinkRGB_LED(PIN_BLUE, 3, 1000);
+
   pca9685.setCurPosMajor(config.CurPos0) ;
   pca9685.setCurPosSupport(config.CurPos1);
   pca9685.setMajorServMin(config.MajorServMin); 
@@ -193,24 +201,22 @@ void setup() {
   pca9685.setSupportServMax(config.SupportServMax);
 
   BlinkRGB_LED(PIN_GREEN, 3, 1000);
- 
-  if (usingSPIFFS_html)  server.on("/", [](){ server.send(200,"text/html", StrIndexHtml);});
-  else server.on("/", [](){ server.send(400,"text/html", String("Not found index.html"));});
 
-  server.begin();                                     // start web server
-  webSocket.begin();                                  // start websocket
-  webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
+  if (config.OTA_Switch) sendJson("OTA_selected", String(1));
+  else sendJson("OTA_selected", String(0));
 }
 
 void loop()
 {
   unsigned long startTime = millis();
-  ArduinoOTA.handle();
+  
+  if (config.OTA_Switch) ArduinoOTA.handle();
   
   if (bLowVoltage == false) {
-    analogWrite(PIN_RED, 0);
-    analogWrite(PIN_RED, 841);
+    BlinkRGB_LED(PIN_RED, 2, 500);
+    BlinkRGB_LED(PIN_GREEN, 2, 500);
   }
+ 
   server.handleClient();                              // Needed for the webserver to handle all clients
   webSocket.loop();                                   // Update function for the webSockets 
   

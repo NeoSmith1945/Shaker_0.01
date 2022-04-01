@@ -33,6 +33,7 @@ struct Config {
   int count;
   int waiting;
   long shakeDurationMillisec ;
+  bool OTA_Switch;
 };
 
 float fReadBatteryChannel_3( );

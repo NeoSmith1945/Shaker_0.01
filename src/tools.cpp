@@ -303,14 +303,17 @@ void loadConfiguration(const char *filename, Config &config) {
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
 
+
   config.shakeMode = 0;
   config.initMajorMin = 100;
   config.initMajorMax = 180;
   config.initSupportMin = 110;
   config.initSupportMax = 163;
 // 16 servo objects can be created on the ESP32
-  config.CurPos0 = 120 ;
-  config.CurPos1 = 120 ;
+  config.CurPos0 =  doc["MajorServoPos"] | 120;
+  config.CurPos1 = doc["SupportServoPos"] | 120;
+  if (doc["OTA"] == "enabled") config.OTA_Switch = true;
+  else config.OTA_Switch = false;
 }
 
 // Simple function to send information to the web clients
@@ -464,7 +467,6 @@ void webSocketEvent(byte num, WStype_t type, uint8_t * payload, size_t length) {
           }  
           xSemaphoreGive( let_me_process );
         }
-
         if(String(l_type) == "SERVO_START") {
           xSemaphoreTake( let_me_process, portMAX_DELAY ); 
           sendJson("SERVO_START", String(l_value));          
