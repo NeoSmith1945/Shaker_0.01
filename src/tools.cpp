@@ -291,6 +291,10 @@ void loadConfiguration(const char *filename, Config &config) {
   if (error)
     Serial.println(F("Failed to read file, using default configuration"));
 
+  // Close the file (Curiously, File's destructor doesn't close the file)
+  
+  file.close();
+
   // Copy values from the JsonDocument to the Config
   for (i=0;i<3;i++) {
     config.maxMajor[i] = doc["maxMajor"][i] | 150;
@@ -298,12 +302,16 @@ void loadConfiguration(const char *filename, Config &config) {
     config.maxSupport[i] = doc["maxSupport"][i] | 140;
     config.minSupport[i] = doc["minSupport"][i] | 95;
   }
-  strlcpy(config.instance, doc["instance"] | "controller",  // <- source
+
+  strlcpy(config.instance, doc["instance"] | "CONTROLLER",  // <- source
               sizeof(config.instance));         // <- destination's capacity
-  // Close the file (Curiously, File's destructor doesn't close the file)
-  file.close();
-
-
+  strlcpy(config.NetWorkType, doc["NetWork"] | "192.168.1.1",  // <- source
+              sizeof(config.NetWorkType));         // <- destination's capacity
+  strlcpy(config.Privat_ssid, doc["Privat_SSID"] | "ShutlerNet",  // <- source
+              sizeof(config.Privat_ssid));         // <- destination's capacity
+  strlcpy(config.Privat_pass, doc["Privat_PASS"] | "12345678",  // <- source
+              sizeof(config.Privat_pass));         // <- destination's capacity
+  
   config.shakeMode = 0;
   config.initMajorMin = 100;
   config.initMajorMax = 180;
@@ -312,8 +320,10 @@ void loadConfiguration(const char *filename, Config &config) {
 // 16 servo objects can be created on the ESP32
   config.CurPos0 =  doc["MajorServoPos"] | 120;
   config.CurPos1 = doc["SupportServoPos"] | 120;
-  if (doc["OTA"] == "enabled") config.OTA_Switch = true;
-  else config.OTA_Switch = false;
+  if (doc["OTA"] == "enabled") 
+    config.OTA_Switch = true;
+  else 
+    config.OTA_Switch = false;
 }
 
 // Simple function to send information to the web clients

@@ -70,8 +70,11 @@ void setup() {
     Serial.println("An Error has occurred while mounting SPIFFS");
   } else {
     loadConfiguration("/config.json", config);
-    if(String(config.instance) == "CONTROLLER") 
-      index_html = SPIFFS.open("/index2.html");
+    if(String(config.instance) == "CONTROLLER")
+      if(config.OTA_Switch) 
+        index_html = SPIFFS.open("/index2.html");
+      else 
+        index_html = SPIFFS.open("/index21.html");
     else
       index_html = SPIFFS.open("/index.html");
     if(!index_html){
@@ -101,31 +104,42 @@ void setup() {
   
  // adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_11);// using GPIO - IO35  
  
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  if ((String(config.NetWorkType) ==  "public") || (String(config.NetWorkType) ==  "both")) {
+
+    if (String(config.NetWorkType) ==  "public") 
+      WiFi.mode(WIFI_STA);
+//    else  WiFi.mode(WIFI_STA_AP);
+
+    WiFi.begin(ssid, password);
  // ... Give ESP 10 seconds to connect to station.
 
-  unsigned long startTime = millis();
-  Serial.print("Waiting for wireless connection ");
-  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
-    analogWrite(PIN_BLUE,  847);
-    delay(250);
-    Serial.print(".");
-    analogWrite(PIN_BLUE,  0);
-    delay(250);
+    unsigned long startTime = millis();
+    Serial.print("Waiting for wireless connection ");
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
+      analogWrite(PIN_BLUE,  847);
+      delay(250);
+      Serial.print(".");
+      analogWrite(PIN_BLUE,  0);
+      delay(250);
+    }
+    Serial.println();
+    while (WiFi.status() != WL_CONNECTED) {
+      Serial.println("Connection Failed! Rebooting...");
+      BlinkRGB_LED(PIN_RED, 3, 2000);
+      ESP.restart();
+    }
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+  } 
+  if ((String(config.NetWorkType) ==  "privat") || (String(config.NetWorkType) ==  "both"))
+  {
+    if ( String(config.NetWorkType) ==  "privat") WiFi.mode(WIFI_AP);
+    WiFi.softAP(config.Privat_ssid, config.Privat_pass);
+    Serial.println();
+    Serial.print("SoftAP IP address: ");
+    Serial.println(WiFi.softAPIP());
   }
   
-  Serial.println();
-  
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
-    BlinkRGB_LED(PIN_RED, 3, 2000);
-    ESP.restart();
-  }
-
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
   // OTA
   // No authentication by default
   // ArduinoOTA.setPassword((const char *)"1234");
@@ -139,45 +153,43 @@ void setup() {
   // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
   // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
   if (config.OTA_Switch) { 
-  ArduinoOTA
-    .onStart([]() {
-      String type;
-      if (ArduinoOTA.getCommand() == U_FLASH)
-        type = "sketch";
-      else // U_SPIFFS
-        type = "filesystem";
+    ArduinoOTA
+      .onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH)
+          type = "sketch";
+        else // U_SPIFFS
+          type = "filesystem";
 
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
-    })
-    .onEnd([]() {
-      Serial.println("\nEnd");
-    })
-    .onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-    })
-    .onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
-    });
-
-  ArduinoOTA.begin();
-
-  Serial.println("OTA Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-  Serial.println("ArduinoOTA begin OK");    // print a message out in the serial port
+        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+        Serial.println("Start updating " + type);
+      })
+      .onEnd([]() {
+        Serial.println("\nEnd");
+      })
+      .onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+      })
+      .onError([](ota_error_t error) {
+        Serial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+        else if (error == OTA_END_ERROR) Serial.println("End Failed");
+      });
+    ArduinoOTA.begin();
+    Serial.println("OTA Ready");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    Serial.println("ArduinoOTA begin OK");    // print a message out in the serial port
   } else 
     Serial.println("OTA disabled");
 
   let_me_process = xSemaphoreCreateMutex();
 
   Serial.println("server begin OK");    // print a message out in the serial port
-  xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 50000, NULL, 1, &Task_VoltageMon);
+  xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 50000, NULL, 2, &Task_VoltageMon);
 
   Serial.println("setup OK");    // print a message out in the serial port
 

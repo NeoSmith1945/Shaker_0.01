@@ -79,17 +79,46 @@ border: 0.2px solid #010101; }
   var SocketOpen = false;
 
   function init() {
-//    Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
-    Socket = new WebSocket('ws://192.168.178.68:81/');
+    Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
 
     Socket.onmessage = function(event) {
       processCommand(event);
     };
 
+    slider.setAttribute('disabled', true) ;
+    slider4.setAttribute('disabled', true) ;
+    slider5.setAttribute('disabled', true) ;
+    slider0.setAttribute('disabled', true) ;
+    slider1.setAttribute('disabled', true) ;
+    slider2.setAttribute('disabled', true) ;
+    slider3.setAttribute('disabled', true) ;
+    slider6.setAttribute('disabled', true) ;
+
+    btnStop.setAttribute('disabled', true) ;
+    btnStart.setAttribute('disabled', true) ;
+
+    document.getElementById('MOD_0').setAttribute('disabled', true) ;
+    document.getElementById('MOD_1').setAttribute('disabled', true) ;
+    document.getElementById('MOD_2').setAttribute('disabled', true) ;
+    document.getElementById('OTA').setAttribute('disabled', true) ;
+
     Socket.addEventListener("open", () => {
     console.log(`[websockets] Connected to ws://192.168.178.68:81/`);
-    SocketOpen = true;
-  
+    SocketOpen = true; 
+    slider.removeAttribute('disabled');
+    slider4.removeAttribute('disabled') ;
+    slider5.removeAttribute('disabled') ;
+    slider0.removeAttribute('disabled') ;
+    slider1.removeAttribute('disabled') ;
+    slider2.removeAttribute('disabled') ;
+    slider3.removeAttribute('disabled') ;
+    slider6.removeAttribute('disabled') ;
+    
+    document.getElementById('MOD_0').removeAttribute('disabled') ;
+    document.getElementById('MOD_1').removeAttribute('disabled') ;
+    document.getElementById('MOD_2').removeAttribute('disabled') ;
+    document.getElementById('OTA').removeAttribute('disabled') ;
+ 
     });
   }
 
@@ -101,12 +130,10 @@ border: 0.2px solid #010101; }
 	    } else {
 	      l_ota_selected = 0;
 	    }
-	    console.log(l_OTA_selected);
-      var msg = { type: 'OTA_selected', value: l_OTA_selected};
+	    console.log(l_ota_selected);
+      var msg = { type: 'OTA_selected', value: l_ota_selected};
     }  	 
   }
- 
-
 
   function sliderPosOneMin_changed () {
     var l_SERVO_PosOneMin = slider0.value;

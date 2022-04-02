@@ -38,7 +38,6 @@
   document.getElementById('MOD_0').addEventListener('click', mod_changed);
   document.getElementById('MOD_1').addEventListener('click', mod_changed);
   document.getElementById('MOD_2').addEventListener('click', mod_changed);
-  document.getElementById('OTA').addEventListener('click', ota_checked);
 
   var slider = document.getElementById('SERVO_INTENSITY');
   var slider4 = document.getElementById("shakeAmount");
@@ -73,7 +72,6 @@
 
   function init() {
     Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
-//    Socket = new WebSocket('ws://192.168.178.68:81/');
 
     Socket.onmessage = function(event) {
       processCommand(event);
@@ -88,7 +86,6 @@
     document.getElementById('MOD_0').setAttribute('disabled', true) ;
     document.getElementById('MOD_1').setAttribute('disabled', true) ;
     document.getElementById('MOD_2').setAttribute('disabled', true) ;
-    document.getElementById('OTA').setAttribute('disabled', true) ;
 
     Socket.addEventListener("open", () => {
       console.log(`[websockets] Connected to ws://192.168.178.68:81/`);
@@ -99,28 +96,9 @@
       document.getElementById('MOD_0').removeAttribute('disabled') ;
       document.getElementById('MOD_1').removeAttribute('disabled') ;
       document.getElementById('MOD_2').removeAttribute('disabled') ;
-      document.getElementById('OTA').removeAttribute('disabled') ;
     });
   }
 
-  function ota_checked() {
-	  var l_ota_selected = 0;
-  	
-    if(document.getElementById('OTA').checked == true) {
-	      l_ota_selected = 1;
-	  } else {
-	      l_ota_selected = 0;
-	  }
-	  console.log(l_ota_selected);
-    
-    if (SocketOpen)  {
-      var msg = { type: 'OTA_selected', value: l_ota_selected};
-      Socket.send(JSON.stringify(msg));
-    }
-    else  	 
-      console.log("Error: Socket is not open!!");
-  }
-   
   function mod_changed() {
 	var l_MOD_selected = 0;
 	if(document.getElementById('MOD_1').checked == true) {
