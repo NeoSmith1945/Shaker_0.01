@@ -284,13 +284,23 @@ void loadConfiguration(const char *filename, Config &config) {
   // Open file for reading
   File file = SPIFFS.open(filename);
 
+  if(!file){
+      Serial.println("− failed to open file config");
+  }
+
   StaticJsonDocument<512> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
-  if (error)
-    Serial.println(F("Failed to read file, using default configuration"));
-
+  if (error){
+    Serial.println(F("Failed to deserialize Json from file, using default configuration"));
+    config.OTA_Switch = true; 
+  } else{
+    if (doc["OTA"] == "enabled") 
+      config.OTA_Switch = true;
+    else 
+      config.OTA_Switch = false;
+  }
   // Close the file (Curiously, File's destructor doesn't close the file)
   
   file.close();
@@ -305,7 +315,7 @@ void loadConfiguration(const char *filename, Config &config) {
 
   strlcpy(config.instance, doc["instance"] | "CONTROLLER",  // <- source
               sizeof(config.instance));         // <- destination's capacity
-  strlcpy(config.NetWorkType, doc["NetWork"] | "192.168.1.1",  // <- source
+  strlcpy(config.NetWorkType, doc["NetWork"] | "public",  // <- source
               sizeof(config.NetWorkType));         // <- destination's capacity
   strlcpy(config.Privat_ssid, doc["Privat_SSID"] | "ShutlerNet",  // <- source
               sizeof(config.Privat_ssid));         // <- destination's capacity
@@ -320,10 +330,8 @@ void loadConfiguration(const char *filename, Config &config) {
 // 16 servo objects can be created on the ESP32
   config.CurPos0 =  doc["MajorServoPos"] | 120;
   config.CurPos1 = doc["SupportServoPos"] | 120;
-  if (doc["OTA"] == "enabled") 
-    config.OTA_Switch = true;
-  else 
-    config.OTA_Switch = false;
+
+  
 }
 
 // Simple function to send information to the web clients

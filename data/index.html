@@ -29,12 +29,6 @@ border: 0.2px solid #010101; }
 <p><input type="submit" class="button" id="btnStart" value="START"/>
 <input type="submit" class="button" id="btnStop" value="STOP"/></p></span>
 <p>Status: <span id="CurrentStatus">-</span></p>
-<form>
-  <p>OTA off/on:</p>
-  <div>
-    <input type='radio' id='OTA' name='ota_mode'><label for='OTA_Switch'>On/Off</label>
-  </div>
-</form>
 </body>
 
 <script>
@@ -47,8 +41,6 @@ border: 0.2px solid #010101; }
   var slider6 = document.getElementById("shakeSpeed");
   var btnStop = document.getElementById("btnStop");
   var btnStart = document.getElementById("btnStart");
-
-  document.getElementById('OTA').addEventListener('click', ota_changed);
 
   var outServoPosOneMin = document.getElementById('servoPosOneMinS');
   var outServoPosOneMax = document.getElementById('servoPosOneMaxS');
@@ -80,59 +72,37 @@ border: 0.2px solid #010101; }
 
   function init() {
     Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
+    var msgOK = '[websockets] Connected to ws://' + window.location.hostname + ':81/';
 
     Socket.onmessage = function(event) {
       processCommand(event);
     };
 
-    slider.setAttribute('disabled', true) ;
-    slider4.setAttribute('disabled', true) ;
-    slider5.setAttribute('disabled', true) ;
     slider0.setAttribute('disabled', true) ;
     slider1.setAttribute('disabled', true) ;
     slider2.setAttribute('disabled', true) ;
     slider3.setAttribute('disabled', true) ;
+    slider4.setAttribute('disabled', true) ;
+    slider5.setAttribute('disabled', true) ;
     slider6.setAttribute('disabled', true) ;
 
     btnStop.setAttribute('disabled', true) ;
     btnStart.setAttribute('disabled', true) ;
 
-    document.getElementById('MOD_0').setAttribute('disabled', true) ;
-    document.getElementById('MOD_1').setAttribute('disabled', true) ;
-    document.getElementById('MOD_2').setAttribute('disabled', true) ;
-    document.getElementById('OTA').setAttribute('disabled', true) ;
 
     Socket.addEventListener("open", () => {
-    console.log(`[websockets] Connected to ws://192.168.178.68:81/`);
+    console.log(msgOK);
     SocketOpen = true; 
-    slider.removeAttribute('disabled');
-    slider4.removeAttribute('disabled') ;
-    slider5.removeAttribute('disabled') ;
+    
     slider0.removeAttribute('disabled') ;
     slider1.removeAttribute('disabled') ;
     slider2.removeAttribute('disabled') ;
     slider3.removeAttribute('disabled') ;
+    slider4.removeAttribute('disabled') ;
+    slider5.removeAttribute('disabled') ;
     slider6.removeAttribute('disabled') ;
-    
-    document.getElementById('MOD_0').removeAttribute('disabled') ;
-    document.getElementById('MOD_1').removeAttribute('disabled') ;
-    document.getElementById('MOD_2').removeAttribute('disabled') ;
-    document.getElementById('OTA').removeAttribute('disabled') ;
  
     });
-  }
-
-  function ota_changed() {
-	  var l_ota_selected = 0;
-    if (SocketOpen)  {
-  	  if(document.getElementById('OTA').checked == true) {
-	      l_ota_selected = 1;
-	    } else {
-	      l_ota_selected = 0;
-	    }
-	    console.log(l_ota_selected);
-      var msg = { type: 'OTA_selected', value: l_ota_selected};
-    }  	 
   }
 
   function sliderPosOneMin_changed () {
@@ -304,15 +274,6 @@ border: 0.2px solid #010101; }
 	    console.log("enable start btn"); 
       btnStop.removeAttribute('disabled') ;    
 	  }   
-    else if (type.localeCompare("OTA_selected") == 0) {
-      var l_OTA_STATUS = obj.value;
-      if (l_OTA_STATUS == 1) { 
-        console.log("ota enabled"); 
-        document.getElementById('OTA').checked = true
-      }
-      else
-        document.getElementById('OTA').checked = false
-    }
   }
   
   window.onload = function(event) {

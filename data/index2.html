@@ -73,7 +73,7 @@
 
   function init() {
     Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
-//    Socket = new WebSocket('ws://192.168.178.68:81/');
+    var msgOK = '[websockets] Connected to ws://' + window.location.hostname + ':81/';
 
     Socket.onmessage = function(event) {
       processCommand(event);
@@ -91,7 +91,7 @@
     document.getElementById('OTA').setAttribute('disabled', true) ;
 
     Socket.addEventListener("open", () => {
-      console.log(`[websockets] Connected to ws://192.168.178.68:81/`);
+      console.log(msgOK);
       SocketOpen = true;
       slider.removeAttribute('disabled');
       slider4.removeAttribute('disabled') ;
