@@ -79,10 +79,9 @@ void shakeTask( void *param ) {
     else
       pca9685.setMaxV(pca9685.getSupportServMax());
   
-    xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 1, &Task_CurrentMon);
+    xTaskCreate( current_monitor_task, "Current_Monitor_Task", 50000, NULL, 2, &Task_CurrentMon);
 
     pca9685.MoveMajorServoToStart();
-
     pca9685.MoveSupportServoToStart();
   }
   canBeStopped = true;
@@ -288,7 +287,7 @@ void loadConfiguration(const char *filename, Config &config) {
       Serial.println("− failed to open file config");
   }
 
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<1024> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
@@ -309,8 +308,8 @@ void loadConfiguration(const char *filename, Config &config) {
   for (i=0;i<3;i++) {
     config.maxMajor[i] = doc["maxMajor"][i] | 150;
     config.minMajor[i] = doc["minMajor"][i] | 95;
-    config.maxSupport[i] = doc["maxSupport"][i] | 140;
-    config.minSupport[i] = doc["minSupport"][i] | 95;
+    config.maxSupport[i] = doc["maxSup"][i] | 160;
+    config.minSupport[i] = doc["minSup"][i] | 120;
   }
 
   strlcpy(config.instance, doc["instance"] | "CONTROLLER",  // <- source
@@ -328,8 +327,8 @@ void loadConfiguration(const char *filename, Config &config) {
   config.initSupportMin = 110;
   config.initSupportMax = 163;
 // 16 servo objects can be created on the ESP32
-  config.CurPos0 =  doc["MajorServoPos"] | 120;
-  config.CurPos1 = doc["SupportServoPos"] | 120;
+  config.CurPos0 =  doc["MajorServoPos"] | 140;
+  config.CurPos1 = doc["SupServoPos"] | 130;
 
   
 }

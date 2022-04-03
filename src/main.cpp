@@ -115,7 +115,7 @@ void setup() {
 
     unsigned long startTime = millis();
     Serial.print("Waiting for wireless connection ");
-    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 50000) {
       analogWrite(PIN_BLUE,  847);
       delay(250);
       Serial.print(".");
@@ -189,7 +189,7 @@ void setup() {
   let_me_process = xSemaphoreCreateMutex();
 
   Serial.println("server begin OK");    // print a message out in the serial port
-  xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 50000, NULL, 2, &Task_VoltageMon);
+  xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 30000, NULL, 3, &Task_VoltageMon);
 
   Serial.println("setup OK");    // print a message out in the serial port
 

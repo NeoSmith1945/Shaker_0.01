@@ -1,8 +1,7 @@
 {"bkp_OTA":"disabled","OTA":"enabled",
-"NetWork":"privat", "bkp_NetWork1":"both", "bkNetWork":"public",
+"NetWork":"privat", "bkp_NetWork1":"both", "bkpNetWork":"public",
 "Privat_IP":"192.168.1.1", "Privat_SSID":"ShutlerNet", "Privat_PASS":"12345678",
-"instance": "CONTROLLER", "bkpinstance": "CONFIGURATOR", 
-"maxMajor": [165, 170, 180], "minMajor": [115, 120, 95], 
-"maxSupport": [165, 165, 180], "minSupport": [116, 121, 99],
-"MajorServoPos":120,"SupportServoPos":120
-}
+"instance": "CONTROLLER", "BKP_instance": "CONFIGURATOR", 
+"maxMajor":[161,170,180], "minMajor":[120,118,105], 
+"maxSup":[147,161,161],"minSup":[121,119,107],
+"MajorServoPos":150,"SupServoPos":140}
