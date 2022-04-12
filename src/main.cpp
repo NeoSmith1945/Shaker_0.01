@@ -138,6 +138,7 @@ void setup() {
     Serial.println();
     Serial.print("SoftAP IP address: ");
     Serial.println(WiFi.softAPIP());
+    BlinkRGB_LED(PIN_BLUE, 5, 1000);
   }
   
   // OTA
@@ -189,34 +190,42 @@ void setup() {
   let_me_process = xSemaphoreCreateMutex();
 
   Serial.println("server begin OK");    // print a message out in the serial port
-  xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 30000, NULL, 3, &Task_VoltageMon);
+  
 
-  Serial.println("setup OK");    // print a message out in the serial port
+    if ( fReadBatteryChannel_3() > 6.0f) {
+      xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 30000, NULL, 3, &Task_VoltageMon);
 
-  BlinkRGB_LED(PIN_GREEN, 3, 1000);
+      Serial.println("setup OK");    // print a message out in the serial port
 
- 
-  if (usingSPIFFS_html)  server.on("/", [](){ server.send(200,"text/html", StrIndexHtml);});
-  else server.on("/", [](){ server.send(400,"text/html", String("Not found index.html"));});
+      BlinkRGB_LED(PIN_GREEN, 3, 1000);
 
-  server.begin();                                     // start web server
-  webSocket.begin();                                  // start websocket
-  webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
+      if (usingSPIFFS_html)  server.on("/", [](){ server.send(200,"text/html", StrIndexHtml);});
+      else server.on("/", [](){ server.send(400,"text/html", String("Not found index.html"));});
 
-  BlinkRGB_LED(PIN_BLUE, 3, 1000);
+      server.begin();                                     // start web server
+      webSocket.begin();                                  // start websocket
+      webSocket.onEvent(webSocketEvent);                  // define a callback function -> what does the ESP32 need to do when an event from the websocket is received? -> run function "webSocketEvent()"
 
-  pca9685.setCurPosMajor(config.CurPos0) ;
-  pca9685.setCurPosSupport(config.CurPos1);
-  pca9685.setMajorServMin(config.MajorServMin); 
-  pca9685.setMajorServMax(config.MajorServMax); 
-  pca9685.setSupportServMin(config.SupportServMin);
-  pca9685.setSupportServMax(config.SupportServMax);
+      BlinkRGB_LED(PIN_BLUE, 3, 1000);
 
-  BlinkRGB_LED(PIN_GREEN, 3, 1000);
+      pca9685.setCurPosMajor(config.CurPos0) ;
+      pca9685.setCurPosSupport(config.CurPos1);
+      pca9685.setMajorServMin(config.MajorServMin); 
+      pca9685.setMajorServMax(config.MajorServMax); 
+      pca9685.setSupportServMin(config.SupportServMin);
+      pca9685.setSupportServMax(config.SupportServMax);
 
-  if (config.OTA_Switch) sendJson("OTA_selected", String(1));
-  else sendJson("OTA_selected", String(0));
+      BlinkRGB_LED(PIN_GREEN, 3, 1000);
+
+      if (config.OTA_Switch) sendJson("OTA_selected", String(1));
+      else sendJson("OTA_selected", String(0));
+    } else {
+      for(;;)
+        BlinkRGB_LED(PIN_RED, 25, 1000);
+    }
 }
+
+
 
 void loop()
 {
