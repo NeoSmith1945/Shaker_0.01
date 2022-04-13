@@ -21,6 +21,12 @@
 
 #define I2C_SDA 21
 #define I2C_SCL 22
+
+#include <AceButton.h>
+using namespace ace_button;
+AceButton button;
+
+static const int BUTTON_PIN = 23;
  
 bool bLowVoltage = false;
 
@@ -60,6 +66,11 @@ int clientCounter = 0;
 String StrIndexHtml;
 File index_html;
 
+int buttonState = 0;
+
+// Forward reference to prevent Arduino compiler becoming confused.
+void handleClickEvent(AceButton*, uint8_t, uint8_t);
+
 void setup() {
   File file;
   boolean usingSPIFFS_html = true;
@@ -84,10 +95,27 @@ void setup() {
       StrIndexHtml = index_html.readString();
   }
   
+  
+  Serial.println("Button is ready");
+  pinMode(BUTTON_PIN, INPUT);
+
+  button.init(BUTTON_PIN, LOW);
+
+  // Configure the ButtonConfig with the event handler, and enable the LongPress
+  // and RepeatPress events which are turned off by default.
+  ButtonConfig* buttonConfig = button.getButtonConfig();
+  buttonConfig->setEventHandler(handleClickEvent);
+  buttonConfig->setFeature(ButtonConfig::kFeatureClick);
+  buttonConfig->setFeature(ButtonConfig::kFeatureDoubleClick);
+  buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
+  buttonConfig->setFeature(ButtonConfig::kFeatureRepeatPress);
+
+
   Serial.println("PCA9685 Servo Init with OTA: red, green and blue");
   BlinkRGB_LED(PIN_RED, 2, 2000);
   BlinkRGB_LED(PIN_GREEN, 2, 2000);
   BlinkRGB_LED(PIN_BLUE, 2, 2000);
+  
   Wire.begin(I2C_SDA, I2C_SCL);
   // Print to monitor
   Serial.println("PCA9685 Servo Init with OTA: I2C OK");
@@ -225,7 +253,75 @@ void setup() {
     }
 }
 
+// The event handler for the button.
+void handleClickEvent(AceButton* button, uint8_t eventType, uint8_t buttonState) {
 
+  // Print out a message for all events.
+  Serial.print(F("handleEvent(): eventType: "));
+  Serial.print(eventType);
+  Serial.print(F("; buttonState: "));
+  Serial.println(buttonState);
+
+  // Control the LED only for the Pressed and Released events.
+  // Notice that if the MCU is rebooted while the button is pressed down, no
+  // event is triggered and the LED remains off.
+  switch (eventType) {
+    case AceButton::kEventReleased:
+      sendJson("SERVO_CURENT_STATUS", String("AceButton::kEventReleased"));
+      break;
+    case AceButton::kEventPressed:
+      analogWrite(PIN_BLUE, 0);
+      analogWrite(PIN_RED, 0);
+      analogWrite(PIN_GREEN, 0);
+      sendJson("SERVO_CURENT_STATUS", String("AceButton::kEventPressed"));
+      break;
+    case AceButton::kEventDoubleClicked :
+      sendJson("SERVO_CURENT_STATUS", String("AceButton::kEventDubleClicked"));
+      break;
+    case AceButton::kEventLongPressed:
+      analogWrite(PIN_BLUE, 0);
+      analogWrite(PIN_RED, 0);
+      analogWrite(PIN_GREEN, 0);
+      sendJson("SERVO_CURENT_STATUS", String("AceButton::kEventLongPressed"));
+    
+      xSemaphoreTake( let_me_process, portMAX_DELAY ); 
+      
+      if (config.canBeStartedUsingBtn ) {
+        config.shakeMode = 1;
+        config.MajorServMin = config.minMajor[config.shakeMode]; 
+        config.MajorServMax = config.maxMajor[config.shakeMode];
+        config.SupportServMin = config.minSupport[config.shakeMode];
+        config.SupportServMax = config.maxSupport[config.shakeMode];
+
+        pca9685.setMajorServMin(config.MajorServMin); 
+        pca9685.setMajorServMax(config.MajorServMax); 
+        pca9685.setSupportServMin(config.SupportServMin);
+        pca9685.setSupportServMax(config.SupportServMax);
+      
+        config.count = 60 ;
+
+        pca9685.setCount(config.count); 
+        pca9685.setWaiting(20);
+    
+        if ((bLowVoltage == false) && (canBeStopped == false)) {
+            Serial.println("shaking task is started......"); 
+            xTaskCreatePinnedToCore( shakeTask, "shakeTaskPerCount", 10000, NULL, 1, &Task_HW, 1);
+            canBeStopped = true;
+            canBeStarted = false;
+            config.canBeStartedUsingBtn = false;
+        } else 
+            Serial.println("shaking task is already running"); 
+      }         
+      xSemaphoreGive( let_me_process ); 
+      break;
+    case AceButton::kEventRepeatPressed:
+      BlinkRGB_LED(PIN_GREEN, 5, 500);
+      analogWrite(PIN_BLUE, 0);
+      analogWrite(PIN_RED, 0);
+      analogWrite(PIN_GREEN, 0);
+      break;
+  }
+}
 
 void loop()
 {
@@ -237,7 +333,11 @@ void loop()
     BlinkRGB_LED(PIN_RED, 2, 500);
     BlinkRGB_LED(PIN_GREEN, 2, 500);
   }
+
+  button.check();
  
+  //BlinkRGB_LED(PIN_RED, 3, 500);
+  
   server.handleClient();                              // Needed for the webserver to handle all clients
   webSocket.loop();                                   // Update function for the webSockets 
   

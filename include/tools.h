@@ -36,7 +36,8 @@ struct Config {
   bool OTA_Switch;
   char NetWorkType[8];   // "public" or "privat" or "both"
   char Privat_ssid[64];  
-  char Privat_pass[64]; 
+  char Privat_pass[64];
+  bool canBeStartedUsingBtn ;
 };
 
 float fReadBatteryChannel_3( );

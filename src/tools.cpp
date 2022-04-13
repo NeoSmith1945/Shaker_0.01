@@ -106,8 +106,14 @@ void shakeTask( void *param ) {
         vTaskDelay ( waiting / portTICK_PERIOD_MS);
         config.count = 0;
     }
-  }    
+  }   
+  
+  pca9685.setCurPosMajor(pca9685.getCurPosMajor()) ;
+  pca9685.setCurPosSupport(pca9685.getCurPosSupport());
+ 
   canBeStopped = false;
+  config.canBeStartedUsingBtn = true;
+
   StateMsg = "shakeTask terminated: count = "+String(config.count);
   sendJson("SERVO_CURENT_STATUS", StateMsg);
   sendJson("DISABLE_STOP_BTN", String("true"));
@@ -170,7 +176,13 @@ void shakeTaskPerTimer( void *param ) {
     }     
   }
   
+  pca9685.setCurPosMajor(pca9685.getCurPosMajor()) ;
+  pca9685.setCurPosSupport(pca9685.getCurPosSupport());
+  
   canBeStopped = false;
+  
+  config.canBeStartedUsingBtn = true;
+  
   StateMsg = "shakeTask terminated after (millisec/sec) = "+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
   Serial.println(StateMsg);
   sendJson("SERVO_CURENT_STATUS", StateMsg);
@@ -228,6 +240,7 @@ void current_monitor_task(void *param)
       StateMsg = "current monitor: Max current(3) more than 2.5 A, servo will be off";
       sendJson("SERVO_CURENT_STATUS", StateMsg);
       canBeStopped = false;
+      canBeStarted = false;
       xSemaphoreGive(  let_me_process ); 
       if ( Task_HW != NULL ) vTaskDelete(Task_HW);
       vTaskDelete(NULL);
@@ -237,6 +250,7 @@ void current_monitor_task(void *param)
       StateMsg = "current monitor: Max current(1) more than 2.5 A, servo will be off";
       sendJson("SERVO_CURENT_STATUS", StateMsg);
       canBeStopped = false;
+      canBeStarted = false;
       xSemaphoreGive(  let_me_process ); 
       if ( Task_HW != NULL ) vTaskDelete(Task_HW);
       vTaskDelete(NULL);      
@@ -303,6 +317,8 @@ void loadConfiguration(const char *filename, Config &config) {
   // Close the file (Curiously, File's destructor doesn't close the file)
   
   file.close();
+  
+  config.canBeStartedUsingBtn = true;
 
   // Copy values from the JsonDocument to the Config
   for (i=0;i<3;i++) {
@@ -479,6 +495,7 @@ void webSocketEvent(byte num, WStype_t type, uint8_t * payload, size_t length) {
           if (canBeStopped) {
             canBeStarted = true; 
             canBeStopped = false;
+            config.canBeStartedUsingBtn = true;
             if ( Task_CurrentMon !=  NULL) vTaskDelete(Task_CurrentMon);
             if ( Task_HW !=  NULL) vTaskDelete(Task_HW);
           }  
