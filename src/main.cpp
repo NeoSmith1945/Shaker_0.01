@@ -67,7 +67,7 @@ String StrIndexHtml;
 File index_html;
 
 int buttonState = 0;
-
+int longPressCount = 0;
 // Forward reference to prevent Arduino compiler becoming confused.
 void handleClickEvent(AceButton*, uint8_t, uint8_t);
 
@@ -287,6 +287,7 @@ void handleClickEvent(AceButton* button, uint8_t eventType, uint8_t buttonState)
       xSemaphoreTake( let_me_process, portMAX_DELAY ); 
       
       if (config.canBeStartedUsingBtn ) {
+        longPressCount++;
         config.shakeMode = 1;
         config.MajorServMin = config.minMajor[config.shakeMode]; 
         config.MajorServMax = config.maxMajor[config.shakeMode];
@@ -298,13 +299,17 @@ void handleClickEvent(AceButton* button, uint8_t eventType, uint8_t buttonState)
         pca9685.setSupportServMin(config.SupportServMin);
         pca9685.setSupportServMax(config.SupportServMax);
       
-        config.count = 60 ;
+        if (longPressCount>5) longPressCount = 1;
+
+        config.count = 60 * longPressCount ;
 
         pca9685.setCount(config.count); 
-        pca9685.setWaiting(20);
+        
+        pca9685.setWaiting(5*longPressCount);
     
         if ((bLowVoltage == false) && (canBeStopped == false)) {
             Serial.println("shaking task is started......"); 
+ //           xTaskCreatePinnedToCore( shakeTaskPerTimer, "shakeTaskPerTimer", 10000, NULL, 1, &Task_HW, 1);
             xTaskCreatePinnedToCore( shakeTask, "shakeTaskPerCount", 10000, NULL, 1, &Task_HW, 1);
             canBeStopped = true;
             canBeStarted = false;

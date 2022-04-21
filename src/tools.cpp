@@ -89,6 +89,9 @@ void shakeTask( void *param ) {
   while (count > 0)  {
     count--;
     int waiting = config.waiting;
+    
+    if (waiting < 10) waiting = 10;
+
     if ( fReadBatteryChannel_3() > 6.0f) {
       pca9685.setWaiting(waiting);
       pca9685.goAhead();
@@ -151,6 +154,8 @@ void shakeTaskPerTimer( void *param ) {
   while ( (currentTime - startTime) < config.shakeDurationMillisec )  {
     
     int waiting = config.waiting;
+
+    if (waiting < 10) waiting = 10;
   
     currentTime = millis();
     StateMsg = "shakeTask soll millisec:"+String(config.shakeDurationMillisec)+"; is millisec/sec:"+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
@@ -195,9 +200,10 @@ void shakeTaskPerTimer( void *param ) {
 void current_monitor_task(void *param)
 { float Voltage1, Voltage2  ; // Gets you mV
   float Amps1 , Amps2  ;
-  float ACSValue1 = 0.0, Samples1 = 0.0, AvgACS1 = 0.0,  BaseVol = 2.08f ;
-  float ACSValue2 = 0.0, Samples2 = 0.0, AvgACS2 = 0.0 ;
+  float ACSValue1, Samples1, AvgACS1, ACSValue2, Samples2, AvgACS2 ;
+
   float vRefScale = (3.3f / 4096.0f) ; 
+  float mVperAmp = 12.5f;
 
   Voltage1 = 0; 
   Voltage2 = 0 ; // Gets you mV
@@ -223,21 +229,26 @@ void current_monitor_task(void *param)
       vTaskDelay ( 300 / portTICK_PERIOD_MS);
     }  
     
-    AvgACS1 = Samples1/5;
-    Voltage1 = AvgACS1 * vRefScale - BaseVol ; // Gets you mV
+    AvgACS1 = Samples1/5 - 2782;
+    if (AvgACS1 < 10) AvgACS1 = 0; 
+
+    Voltage1 = AvgACS1 * vRefScale ; // Gets you mV
     
-    Amps1 = ( Voltage1 / 1.32 );
+    Amps1 = ( Voltage1 * mVperAmp  );  // *1.32 / *1.185
 
     if (Amps1 >= Amps1_Max) Amps1_Max = Amps1;
      
-    AvgACS2 = Samples2/5;
-    Voltage2 = AvgACS2 * vRefScale - BaseVol ; // Gets you mV
-    Amps2 = ( Voltage2 / 1.32 );
+    AvgACS2 = Samples2/5 - 2782 ;
+    if (AvgACS2 < 10) AvgACS2 = 0;
+
+    Voltage2 = AvgACS2 * vRefScale ; // Gets you mV
+
+    Amps2 = ( Voltage2 *  mVperAmp  ); // 1.32
 
     if (Amps2 >= Amps2_Max) Amps2_Max = Amps2;
 
-    if ( Amps2_Max > 2.5 ) {
-      StateMsg = "current monitor: Max current(3) more than 2.5 A, servo will be off";
+    if ( Amps2_Max > 3.5 ) {
+      StateMsg = "current monitor: Max current(3) more than 3.5 A, servo will be off";
       sendJson("SERVO_CURENT_STATUS", StateMsg);
       canBeStopped = false;
       canBeStarted = false;
@@ -246,8 +257,8 @@ void current_monitor_task(void *param)
       vTaskDelete(NULL);
     }
 
-    if ( Amps1_Max > 2.5 ) {
-      StateMsg = "current monitor: Max current(1) more than 2.5 A, servo will be off";
+    if ( Amps1_Max > 3.5 ) {
+      StateMsg = "current monitor: Max current(1) more than 3.5 A, servo will be off";
       sendJson("SERVO_CURENT_STATUS", StateMsg);
       canBeStopped = false;
       canBeStarted = false;
@@ -512,7 +523,9 @@ void webSocketEvent(byte num, WStype_t type, uint8_t * payload, size_t length) {
           pca9685.setSupportServMin(config.SupportServMin);
           pca9685.setSupportServMax(config.SupportServMax);
           
-          pca9685.setCount(config.count); 
+          pca9685.setCount(config.count);
+
+          if (config.waiting < 10) config.waiting = 10; 
           pca9685.setWaiting(config.waiting);
     
           if ((bLowVoltage == false) && (canBeStopped == false)) {
