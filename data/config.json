@@ -4,4 +4,4 @@
 "instance": "CONTROLLER", "bkp_instance": "CONFIGURATOR", 
 "maxMajor":[140,146,161], "minMajor":[95,101,96], 
 "maxSup":[144,128,133],"minSup":[94,105,98],
-"MajorServoPos":150,"SupServoPos":125}
+"MajorServoPos":124,"SupServoPos":124}

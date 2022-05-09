@@ -90,9 +90,9 @@ void shakeTask( void *param ) {
     count--;
     int waiting = config.waiting;
     
-    if (waiting < 10) waiting = 10;
+    if (waiting < 19) waiting = 19;
 
-    if ( fReadBatteryChannel_3() > 6.0f) {
+    if ( fReadBatteryChannel_3() > 6.5f) {
       pca9685.setWaiting(waiting);
       pca9685.goAhead();
       pca9685.setWaiting(waiting);
@@ -133,7 +133,7 @@ void shakeTaskPerTimer( void *param ) {
   StateMsg = "shakeTask started: duration (millisec/min) = "+String(config.shakeDurationMillisec)+"/"+String(config.shakeDurationMillisec/60000);
   Serial.println(StateMsg);
 
-  if ( fReadBatteryChannel_3() > 6.0f) {
+  if ( fReadBatteryChannel_3() > 6.5f) {
     if ( pca9685.getMajorServMin() <= pca9685.getSupportServMin() ) 
       pca9685.setMinV(pca9685.getMajorServMin());
     else
@@ -155,7 +155,7 @@ void shakeTaskPerTimer( void *param ) {
     
     int waiting = config.waiting;
 
-    if (waiting < 10) waiting = 10;
+    if (waiting < 19) waiting = 19;
   
     currentTime = millis();
     StateMsg = "shakeTask soll millisec:"+String(config.shakeDurationMillisec)+"; is millisec/sec:"+String(currentTime - startTime)+"/"+String((currentTime - startTime)/1000);
@@ -164,7 +164,7 @@ void shakeTaskPerTimer( void *param ) {
 
     sendJson("SERVO_CURENT_STATUS", StateMsg);
     
-    if ( fReadBatteryChannel_3() > 6.0f) {
+    if ( fReadBatteryChannel_3() > 6.5f) {
       pca9685.setWaiting(waiting);
       pca9685.goAhead();
       pca9685.setWaiting(waiting);
@@ -333,10 +333,10 @@ void loadConfiguration(const char *filename, Config &config) {
 
   // Copy values from the JsonDocument to the Config
   for (i=0;i<3;i++) {
-    config.maxMajor[i] = doc["maxMajor"][i] | 150;
+    config.maxMajor[i] = doc["maxMajor"][i] | 140;
     config.minMajor[i] = doc["minMajor"][i] | 95;
-    config.maxSupport[i] = doc["maxSup"][i] | 160;
-    config.minSupport[i] = doc["minSup"][i] | 120;
+    config.maxSupport[i] = doc["maxSup"][i] | 144;
+    config.minSupport[i] = doc["minSup"][i] | 94;
   }
 
   strlcpy(config.instance, doc["instance"] | "CONTROLLER",  // <- source
@@ -349,14 +349,14 @@ void loadConfiguration(const char *filename, Config &config) {
               sizeof(config.Privat_pass));         // <- destination's capacity
   
   config.shakeMode = 0;
-  config.initMajorMin = 100;
-  config.initMajorMax = 180;
-  config.initSupportMin = 110;
-  config.initSupportMax = 163;
+  config.initMajorMin = 95;
+  config.initMajorMax = 140;
+  config.initSupportMin = 94;
+  config.initSupportMax = 144;
 // 16 servo objects can be created on the ESP32
-  config.CurPos0 =  doc["MajorServoPos"] | 140;
-  config.CurPos1 = doc["SupServoPos"] | 130;
-
+  config.CurPos0 =  doc["MajorServoPos"] | 124;
+  config.CurPos1 = doc["SupServoPos"] | 124;
+  config.waiting = 25;
   
 }
 

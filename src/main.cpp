@@ -220,7 +220,7 @@ void setup() {
   Serial.println("server begin OK");    // print a message out in the serial port
   
 
-    if ( fReadBatteryChannel_3() > 6.0f) {
+    if ( fReadBatteryChannel_3() > 6.5f) {
       xTaskCreate( VoltageMonTask, "Voltage_Monitor_Task", 30000, NULL, 3, &Task_VoltageMon);
 
       Serial.println("setup OK");    // print a message out in the serial port
