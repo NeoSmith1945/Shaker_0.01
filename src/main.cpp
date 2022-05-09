@@ -305,7 +305,7 @@ void handleClickEvent(AceButton* button, uint8_t eventType, uint8_t buttonState)
 
         pca9685.setCount(config.count); 
         
-        pca9685.setWaiting(5*longPressCount);
+        pca9685.setWaiting(20);
     
         if ((bLowVoltage == false) && (canBeStopped == false)) {
             Serial.println("shaking task is started......"); 

@@ -2,6 +2,6 @@
 "NetWork":"privat", "bkp_NetWork1":"both", "bkpNetWork":"public",
 "Privat_IP":"192.168.1.1", "Privat_SSID":"ShutlerNet", "Privat_PASS":"12345678",
 "instance": "CONTROLLER", "bkp_instance": "CONFIGURATOR", 
-"maxMajor":[161,172,180], "minMajor":[110,106,90], 
-"maxSup":[125,136,126],"minSup":[117,124,124],
+"maxMajor":[140,146,161], "minMajor":[95,101,96], 
+"maxSup":[144,128,133],"minSup":[94,105,98],
 "MajorServoPos":150,"SupServoPos":125}
